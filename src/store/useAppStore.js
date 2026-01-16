@@ -61,10 +61,31 @@ const useAppStore = create((set, get) => ({
             id: uuidv4(),
             type: 'shapeNode',
             position,
-            data: { shapeType: type, stroke: '#fff' },
+            data: {
+                shapeType: type,
+                rotation: 0
+            },
             style: { width: 100, height: 100 },
         };
         set((state) => ({ nodes: [...state.nodes, newNode] }));
+    },
+
+    addFreehandNode: (position, points) => {
+        const newNode = {
+            id: uuidv4(),
+            type: 'freehandNode', // We will need to create this component
+            position,
+            data: { points },
+            style: { width: '100%', height: '100%' }, // SVG overlay style
+        };
+        set((state) => ({ nodes: [...state.nodes, newNode] }));
+    },
+
+    deleteNode: (id) => {
+        set((state) => ({
+            nodes: state.nodes.filter((n) => n.id !== id),
+            edges: state.edges.filter((e) => e.source !== id && e.target !== id)
+        }));
     },
 
     addTextNode: (position) => {

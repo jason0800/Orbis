@@ -25,6 +25,7 @@ const tools = [
     { id: 'diamond', icon: Diamond, label: 'Diamond (D)', shortcut: 'D' },
     { id: 'arrow', icon: ArrowRight, label: 'Arrow (A)', shortcut: 'A' },
     { id: 'line', icon: Minus, label: 'Line (L)', shortcut: 'L' },
+    { id: 'freehand', icon: React.lazy(() => import('lucide-react').then(mod => ({ default: mod.Pencil }))), label: 'Freehand (F)', shortcut: 'F' },
     // { id: 'image', icon: ImageIcon, label: 'Image (I)', shortcut: 'I' }, // Future impl
     { id: 'eraser', icon: Eraser, label: 'Eraser (E)', shortcut: 'E' },
 ];
