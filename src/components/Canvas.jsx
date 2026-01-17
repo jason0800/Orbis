@@ -232,8 +232,9 @@ function CanvasContent() {
                 panOnScroll={true}
                 zoomOnScroll={true}
                 preventScrolling={false}
-                // Disable default pane drag if we are drawing
-                panOnDrag={(!isDrawing && !drawingState && activeTool === 'select') || activeTool === 'pan' ? [0, 1] : [1]} // Allow MM pan always. Left pan only if select/pan
+                // Only allow Left Click Pan (0) if we are in 'pan' mode.
+                // Otherwise (select, draw), only allow Middle (1) or Right (2) pan.
+                panOnDrag={activeTool === 'pan' ? [0, 1, 2] : [1, 2]}
             >
                 <Background variant={gridMode === 'none' ? undefined : gridMode} gap={16} />
                 <Controls />

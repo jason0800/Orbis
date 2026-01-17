@@ -1,34 +1,60 @@
 import React, { memo } from 'react';
-import { NodeResizer } from '@xyflow/react';
+import { useReactFlow, NodeResizer } from '@xyflow/react';
 import { getSmoothPath } from '../utils/drawing';
+import useAppStore from '../store/useAppStore';
 import { useNodeRotate } from '../hooks/useNodeRotate';
 import RotationHandle from './RotationHandle';
 
-const FreehandNode = ({ data, selected, id }) => {
-    const { points = [], color = 'var(--text-primary)', strokeWidth = 3, width = 100, height = 100, rotation = 0 } = data;
+const FreehandNode = ({ id, data, selected }) => {
+    // Destructure props just like ShapeNode usually does
+    const {
+        points = [],
+        stroke = '#000000',
+        strokeWidth = 2,
+        strokeStyle = 'solid',
+        opacity = 1,
+        rotation = 0
+    } = data;
+
+    // We already have rotation logic hook
     const { rotateRef, centerRef, onRotateStart } = useNodeRotate(id, rotation);
 
-    // Convert points array to SVG path
-    const pathData = getSmoothPath(points);
+    const pathD = React.useMemo(() => getSmoothPath(points), [points]);
+
+    const getStrokeDasharray = (style) => {
+        switch (style) {
+            case 'dashed': return '5,5';
+            case 'dotted': return '1,1';
+            default: return 'none';
+        }
+    };
+
+    const styleProps = {
+        stroke: stroke,
+        strokeWidth: strokeWidth,
+        strokeDasharray: getStrokeDasharray(strokeStyle),
+        opacity: opacity,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        fill: 'none' // Freehand is always line-only
+    };
 
     return (
-        <div style={{ width: '100%', height: '100%', minWidth: '20px', minHeight: '20px', position: 'relative' }}>
-            {/* Rotated Container */}
-            <div
-                ref={centerRef}
-                style={{
-                    width: '100%',
-                    height: '100%',
-                    transform: `rotate(${rotation}deg)`,
-                    transformOrigin: 'center center',
-                    position: 'relative'
-                }}
-            >
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+
+            <div style={{
+                width: '100%',
+                height: '100%',
+                transform: `rotate(${rotation}deg)`,
+                transformOrigin: 'center center',
+                opacity: opacity
+            }} ref={centerRef}>
+
                 <NodeResizer
                     color="#646cff"
                     isVisible={selected}
-                    minWidth={20}
-                    minHeight={20}
+                    minWidth={10}
+                    minHeight={10}
                 />
 
                 {selected && (
@@ -36,21 +62,24 @@ const FreehandNode = ({ data, selected, id }) => {
                 )}
 
                 <svg
-                    viewBox={`0 0 ${width} ${height}`}
+                    style={{ overflow: 'visible', width: '100%', height: '100%', display: 'block' }}
+                    // Freehand points are already normalized to 0,0 and scaled to width/height by parent container?
+                    // Actually, points are relative to x,y. 
+                    // If we use viewBox="0 0 100 100" and preserveAspectRatio="none", we distort the drawing to fit the box.
+                    // If we want it to scale, we should use viewBox="0 0 initialWidth initialHeight".
+                    // However, we don't store initialWidth clearly.
+                    // The safest way for freehand to scale is:
+                    // 1. Render points in a 0..1 coordinate space? Expensive to recalc.
+                    // 2. Use vector-effect non-scaling-stroke?
+                    // Let's assume standard behavior: SVG scales to container.
+                    width="100%"
+                    height="100%"
+                    viewBox={`0 0 ${data.width || 100} ${data.height || 100}`}
                     preserveAspectRatio="none"
-                    style={{ width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none' }}
                 >
                     <path
-                        d={pathData}
-                        stroke={color}
-                        strokeWidth={strokeWidth}
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        // Since we are using viewBox 0 0 w h, and points are normalized to 0..w, 0..h
-                        // Scaling happens automatically via SVG scaling.
-                        // However, stroke width might scale too? 
-                        // vector-effect="non-scaling-stroke" keeps stroke width constant!
+                        d={pathD}
+                        {...styleProps}
                         vectorEffect="non-scaling-stroke"
                     />
                 </svg>

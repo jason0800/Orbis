@@ -65,106 +65,147 @@ const Sidebar = () => {
     const renderProperties = () => {
         if (!selectedNode) return null;
 
-        const { stroke, fill, strokeWidth, strokeStyle, opacity } = selectedNode.data;
+        const { stroke, fill, strokeWidth, strokeStyle, opacity, shapeType } = selectedNode.data;
+
+        // Determine if Fill is supported
+        // ShapeNode has shapeType. FreehandNode is type='freehandNode'.
+        const isLine = shapeType === 'line' || shapeType === 'arrow';
+        const isFreehand = selectedNode.type === 'freehandNode';
+        const supportsFill = !isLine && !isFreehand;
 
         return (
             <div style={{ marginTop: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
                 <div style={sectionHeaderStyle}>Appearance</div>
 
-                {/* Stroke Color */}
-                <div style={rowStyle}>
-                    <label style={labelStyle}>Stroke</label>
-                    <input
-                        type="color"
-                        value={stroke || '#000000'}
-                        onChange={(e) => updateProp('stroke', e.target.value)}
-                        style={colorInputStyle}
-                    />
-                </div>
-
-                {/* Fill Color */}
-                <div style={rowStyle}>
-                    <label style={labelStyle}>Fill</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <input
-                            type="checkbox"
-                            checked={fill !== 'transparent'}
-                            onChange={(e) => updateProp('fill', e.target.checked ? '#ff0000' : 'transparent')}
-                        />
-                        {fill !== 'transparent' && (
+                {/* Stroke Section */}
+                <div style={controlGroupStyle}>
+                    <div style={rowStyle}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div title="Stroke" style={{ color: 'var(--text-secondary)' }}><Palette size={14} /></div>
                             <input
                                 type="color"
-                                value={fill || '#ffffff'}
-                                onChange={(e) => updateProp('fill', e.target.value)}
+                                value={stroke || '#000000'}
+                                onChange={(e) => updateProp('stroke', e.target.value)}
                                 style={colorInputStyle}
                             />
-                        )}
+                        </div>
+                        {/* Opacity for Stroke? Or global opacity?
+                            User asked for Opacity property. Usually global opacity.
+                            Let's put global opacity separate.
+                        */}
+                        <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
+                            {(stroke || '#000').toUpperCase()}
+                        </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                        {/* Width */}
+                        <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                            <Minus size={14} style={{ color: 'var(--text-secondary)' }} />
+                            {[2, 4, 8].map(w => (
+                                <button
+                                    key={w}
+                                    onClick={() => updateProp('strokeWidth', w)}
+                                    title={`Width ${w}px`}
+                                    style={{
+                                        ...optionBtnStyle,
+                                        background: (strokeWidth === w) ? 'var(--selection-color)' : 'transparent',
+                                        border: (strokeWidth === w) ? '1px solid #646cff' : '1px solid var(--border-color)',
+                                        height: '24px',
+                                        width: '24px'
+                                    }}
+                                >
+                                    <div style={{ height: Math.min(12, w) + 'px', width: '12px', background: 'var(--text-primary)', borderRadius: '1px' }}></div>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div style={{ width: '1px', background: 'var(--border-color)', height: '24px' }}></div>
+
+                        {/* Style */}
+                        <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                            <Type size={14} style={{ color: 'var(--text-secondary)' }} /> {/* Using Type icon as placeholder for Style or generic edit */}
+                            {['solid', 'dashed', 'dotted'].map(s => (
+                                <button
+                                    key={s}
+                                    onClick={() => updateProp('strokeStyle', s)}
+                                    title={s}
+                                    style={{
+                                        ...optionBtnStyle,
+                                        background: (strokeStyle === s) ? 'var(--selection-color)' : 'transparent',
+                                        border: (strokeStyle === s) ? '1px solid #646cff' : '1px solid var(--border-color)',
+                                        height: '24px',
+                                        width: '24px'
+                                    }}
+                                >
+                                    <div style={{
+                                        width: '14px',
+                                        height: '2px',
+                                        background: 'var(--text-primary)',
+                                        borderStyle: s === 'solid' ? 'solid' : s,
+                                        borderWidth: '0 0 2px 0',
+                                        borderColor: 'var(--text-primary)'
+                                    }}></div>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
-                {/* Opacity */}
-                <div style={rowStyle}>
-                    <label style={labelStyle}>Opacity</label>
-                    <input
-                        type="range"
-                        min="0.1"
-                        max="1"
-                        step="0.1"
-                        value={opacity ?? 1}
-                        onChange={(e) => updateProp('opacity', parseFloat(e.target.value))}
-                        style={{ width: '60px' }}
-                    />
-                </div>
-
-                {/* Stroke Width */}
-                <div style={rowStyle}>
-                    <label style={labelStyle}>Width</label>
-                    <div style={{ display: 'flex', gap: '2px' }}>
-                        {[2, 4, 8].map(w => (
-                            <button
-                                key={w}
-                                onClick={() => updateProp('strokeWidth', w)}
-                                style={{
-                                    ...optionBtnStyle,
-                                    background: (strokeWidth === w) ? 'var(--selection-color)' : 'transparent',
-                                    border: (strokeWidth === w) ? '1px solid #646cff' : '1px solid var(--border-color)'
-                                }}
-                            >
-                                <div style={{ height: w + 'px', width: '12px', background: 'var(--text-primary)' }}></div>
-                            </button>
-                        ))}
+                {/* Fill Section (Conditional) */}
+                {supportsFill && (
+                    <div style={{ ...controlGroupStyle, marginTop: '8px' }}>
+                        <div style={rowStyle}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div title="Fill" style={{ color: 'var(--text-secondary)' }}><Layers size={14} /></div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={fill !== 'transparent'}
+                                        onChange={(e) => updateProp('fill', e.target.checked ? '#ff0000' : 'transparent')}
+                                    />
+                                    {fill !== 'transparent' && (
+                                        <input
+                                            type="color"
+                                            value={fill || '#ffffff'}
+                                            onChange={(e) => updateProp('fill', e.target.value)}
+                                            style={colorInputStyle}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
 
-                {/* Stroke Style */}
-                <div style={rowStyle}>
-                    <label style={labelStyle}>Style</label>
-                    <div style={{ display: 'flex', gap: '2px' }}>
-                        {['solid', 'dashed', 'dotted'].map(s => (
-                            <button
-                                key={s}
-                                onClick={() => updateProp('strokeStyle', s)}
-                                title={s}
-                                style={{
-                                    ...optionBtnStyle,
-                                    background: (strokeStyle === s) ? 'var(--selection-color)' : 'transparent',
-                                    border: (strokeStyle === s) ? '1px solid #646cff' : '1px solid var(--border-color)'
-                                }}
-                            >
-                                <div style={{
-                                    width: '16px',
-                                    height: '2px',
-                                    background: 'var(--text-primary)',
-                                    borderStyle: s === 'solid' ? 'solid' : s,
-                                    borderWidth: '0 0 2px 0',
-                                    borderColor: 'var(--text-primary)'
-                                }}></div>
-                            </button>
-                        ))}
+                {/* Opacity Slider */}
+                <div style={{ ...controlGroupStyle, marginTop: '8px' }}>
+                    <div style={rowStyle}>
+                        <label style={labelStyle}>Opacity</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <input
+                                type="range"
+                                min="0.1"
+                                max="1"
+                                step="0.1"
+                                value={opacity ?? 1}
+                                onChange={(e) => updateProp('opacity', parseFloat(e.target.value))}
+                                style={{ width: '80px', height: '4px' }}
+                            />
+                            <span style={{ fontSize: '0.8em', width: '24px', textAlign: 'right' }}>
+                                {Math.round((opacity ?? 1) * 100)}%
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
         );
+    };
+
+    const controlGroupStyle = {
+        background: 'var(--bg-secondary)',
+        padding: '8px',
+        borderRadius: '6px',
     };
 
     // --- Render Logic ---

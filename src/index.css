@@ -117,3 +117,9 @@ button:focus-visible {
 .tool-select .react-flow__node:hover {
     cursor: move !important;
 }
+
+/* Eraser Hover Effect: Glow Red */
+.tool-eraser .react-flow__node:hover {
+    filter: drop-shadow(0 0 5px red) !important;
+    /* Optional: We could swap to a red eraser icon if we had one */
+}

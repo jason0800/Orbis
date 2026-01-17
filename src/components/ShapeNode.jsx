@@ -1,9 +1,28 @@
-import React, { memo, useCallback, useState, useEffect } from 'react';
-import { NodeResizer, NodeResizeControl } from '@xyflow/react';
+import React, { memo, useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import useAppStore from '../store/useAppStore';
 import { useNodeRotate } from '../hooks/useNodeRotate';
 import RotationHandle from './RotationHandle';
+
+const CustomHandle = ({ cursor, onPointerDown, style }) => (
+    <div
+        onPointerDown={onPointerDown}
+        className="nodrag"
+        style={{
+            position: 'absolute',
+            width: '12px',
+            height: '12px',
+            background: '#646cff',
+            borderRadius: '50%',
+            cursor: cursor,
+            zIndex: 10,
+            border: '2px solid white',
+            boxSizing: 'border-box',
+            touchAction: 'none',
+            ...style
+        }}
+    />
+);
 
 const ShapeNode = ({ data, selected, id }) => {
     const {
@@ -20,7 +39,6 @@ const ShapeNode = ({ data, selected, id }) => {
     const { screenToFlowPosition, getNode } = useReactFlow();
     const updateNode = useAppStore((state) => state.updateNode);
 
-    // Map strokeStyle to dasharray
     const getStrokeDasharray = (style) => {
         switch (style) {
             case 'dashed': return '5,5';
@@ -33,107 +51,73 @@ const ShapeNode = ({ data, selected, id }) => {
         stroke: (!stroke || stroke === '#fff') ? 'var(--shape-stroke)' : stroke,
         strokeWidth: strokeWidth,
         fill: fill,
-        fillOpacity: fill === 'transparent' ? 0 : 1, // Ensure transparency is handled
+        fillOpacity: fill === 'transparent' ? 0 : 1,
         strokeDasharray: getStrokeDasharray(strokeStyle),
         opacity: opacity,
-        vectorEffect: "non-scaling-stroke", // Keeps stroke width constant when scaling SVG? 
-        // Note: For Line/Arrow we are now NOT scaling the SVG viewBox, so non-scaling-stroke is less critical there, but good for Rect/Circle.
+        vectorEffect: "non-scaling-stroke",
     };
 
-    // --- Line / Arrow Handling Logic ---
     const isLine = ['line', 'arrow'].includes(shapeType);
 
-    const onHandleDragStart = (e, handleType) => {
+    // --- 2D Resize Logic (Flipping Support) ---
+    const onResizeStart = (e, dir) => {
         e.stopPropagation();
         e.preventDefault();
 
         const node = getNode(id);
         if (!node) return;
 
+        const startMouse = screenToFlowPosition({ x: e.clientX, y: e.clientY });
         const startX = node.position.x;
         const startY = node.position.y;
 
-        // Prioritize Style Width
-        let w = parseFloat(node.style?.width);
-        if (isNaN(w)) w = node.measured?.width ?? 100;
+        let w = parseFloat(node.style?.width) || 100;
+        let h = parseFloat(node.style?.height) || 100;
 
-        let h = parseFloat(node.style?.height);
-        if (isNaN(h)) h = node.measured?.height ?? 100;
-
-        const currentRot = node.data?.rotation ?? rotation ?? 0;
-        const rotRad = (currentRot * Math.PI) / 180;
-
-        const cx = startX + w / 2;
-        const cy = startY + h / 2;
-
-        const cos = Math.cos(rotRad);
-        const sin = Math.sin(rotRad);
-        const halfW = w / 2;
-
-        // Handles are always at ends of widthVector (centered vertically)
-        const vecX = halfW * cos;
-        const vecY = halfW * sin;
-
-        const pLeft = { x: cx - vecX, y: cy - vecY };
-        const pRight = { x: cx + vecX, y: cy + vecY };
+        const rotDeg = rotation; // Visual rotation
+        const rotRad = (rotDeg * Math.PI) / 180;
+        const cos = Math.cos(-rotRad);
+        const sin = Math.sin(-rotRad);
 
         const onPointerMove = (moveEvent) => {
             moveEvent.stopPropagation();
             moveEvent.preventDefault();
 
-            const mousePos = screenToFlowPosition({ x: moveEvent.clientX, y: moveEvent.clientY });
+            const currentMouse = screenToFlowPosition({ x: moveEvent.clientX, y: moveEvent.clientY });
+            const globalDx = currentMouse.x - startMouse.x;
+            const globalDy = currentMouse.y - startMouse.y;
 
-            let fixedPoint, movingPoint;
+            // Project delta to local unrotated space
+            const localDx = globalDx * cos - globalDy * sin;
+            const localDy = globalDx * sin + globalDy * cos;
 
-            if (handleType === 'left') {
-                fixedPoint = pRight;
-                movingPoint = mousePos;
-            } else {
-                fixedPoint = pLeft;
-                movingPoint = mousePos;
-            }
+            // Calculate new local bounds
+            // Initial bounds: L=0, T=0, R=w, B=h
+            let newL = 0, newT = 0, newR = w, newB = h;
 
-            const dx = movingPoint.x - fixedPoint.x;
-            const dy = movingPoint.y - fixedPoint.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+            // Apply delta based on direction
+            if (dir.includes('n')) newT += localDy;
+            if (dir.includes('s')) newB += localDy;
+            if (dir.includes('w')) newL += localDx;
+            if (dir.includes('e')) newR += localDx;
 
-            const newWidth = Math.max(20, dist);
+            // Normalize (Flip Logic)
+            const finalL = Math.min(newL, newR);
+            const finalR = Math.max(newL, newR);
+            const finalT = Math.min(newT, newB);
+            const finalB = Math.max(newT, newB);
 
-            let angleRad;
-            if (handleType === 'right') {
-                angleRad = Math.atan2(dy, dx);
-            } else {
-                angleRad = Math.atan2(fixedPoint.y - movingPoint.y, fixedPoint.x - movingPoint.x);
-            }
-            const newAngleDeg = (angleRad * 180) / Math.PI;
+            // Calculate final geometry
+            const finalW = Math.max(1, finalR - finalL);
+            const finalH = Math.max(1, finalB - finalT);
 
-            // Recenter
-            const newCos = Math.cos(angleRad);
-            const newSin = Math.sin(angleRad);
-
-            let newCx, newCy;
-
-            if (handleType === 'right') {
-                // Left is Fixed
-                const newRightX = fixedPoint.x + newWidth * newCos;
-                const newRightY = fixedPoint.y + newWidth * newSin;
-                newCx = (fixedPoint.x + newRightX) / 2;
-                newCy = (fixedPoint.y + newRightY) / 2;
-            } else {
-                // Right is Fixed
-                const newLeftX = fixedPoint.x - newWidth * newCos;
-                const newLeftY = fixedPoint.y - newWidth * newSin;
-                newCx = (newLeftX + fixedPoint.x) / 2;
-                newCy = (newLeftY + fixedPoint.y) / 2;
-            }
-
-            const newX = newCx - newWidth / 2;
-            const newY = newCy - h / 2;
+            // New Unrotated Top-Left is StartX + Shift
+            const finalX = startX + finalL;
+            const finalY = startY + finalT;
 
             updateNode(id, {
-                position: { x: newX, y: newY },
-                style: { ...node.style, width: newWidth },
-                data: { ...node.data, rotation: newAngleDeg }
+                position: { x: finalX, y: finalY },
+                style: { ...node.style, width: finalW, height: finalH }
             });
         };
 
@@ -146,93 +130,97 @@ const ShapeNode = ({ data, selected, id }) => {
         window.addEventListener('pointerup', onPointerUp);
     };
 
+    // --- Line / Arrow Resize Logic (Existing) ---
+    const onLineDragStart = (e, handleType) => {
+        // ... (Keep existing logic exactly as is)
+        e.stopPropagation(); e.preventDefault();
+        const node = getNode(id); if (!node) return;
+        const startX = node.position.x; const startY = node.position.y;
+        let w = parseFloat(node.style?.width) || 100;
+        let h = parseFloat(node.style?.height) || 100;
+        const currentRot = node.data?.rotation ?? rotation ?? 0;
+        const rotRad = (currentRot * Math.PI) / 180;
+        const cx = startX + w / 2; const cy = startY + h / 2;
+        const cos = Math.cos(rotRad); const sin = Math.sin(rotRad);
+        const halfW = w / 2;
+        const vecX = halfW * cos; const vecY = halfW * sin;
+        const pLeft = { x: cx - vecX, y: cy - vecY };
+        const pRight = { x: cx + vecX, y: cy + vecY };
+
+        const onPointerMove = (moveEvent) => {
+            moveEvent.stopPropagation(); moveEvent.preventDefault();
+            const mousePos = screenToFlowPosition({ x: moveEvent.clientX, y: moveEvent.clientY });
+            let fixedPoint, movingPoint;
+            if (handleType === 'left') { fixedPoint = pRight; movingPoint = mousePos; }
+            else { fixedPoint = pLeft; movingPoint = mousePos; }
+            const dx = movingPoint.x - fixedPoint.x; const dy = movingPoint.y - fixedPoint.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const newWidth = Math.max(1, dist);
+            let angleRad;
+            if (handleType === 'right') angleRad = Math.atan2(dy, dx);
+            else angleRad = Math.atan2(fixedPoint.y - movingPoint.y, fixedPoint.x - movingPoint.x);
+            const newAngleDeg = (angleRad * 180) / Math.PI;
+            const newCos = Math.cos(angleRad); const newSin = Math.sin(angleRad);
+            let newCx, newCy;
+            if (handleType === 'right') {
+                newCx = (fixedPoint.x + fixedPoint.x + newWidth * newCos) / 2;
+                newCy = (fixedPoint.y + fixedPoint.y + newWidth * newSin) / 2;
+            } else {
+                newCx = (fixedPoint.x - newWidth * newCos + fixedPoint.x) / 2;
+                newCy = (fixedPoint.y - newWidth * newSin + fixedPoint.y) / 2;
+            }
+            updateNode(id, {
+                position: { x: newCx - newWidth / 2, y: newCy - h / 2 },
+                style: { ...node.style, width: newWidth },
+                data: { ...node.data, rotation: newAngleDeg }
+            });
+        };
+        const onPointerUp = () => {
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+        };
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+    };
 
     return (
-        <div style={{ width: '100%', height: '100%', minWidth: '20px', minHeight: '20px', position: 'relative' }}>
-
+        <div style={{ width: '100%', height: '100%', minWidth: '1px', minHeight: '1px', position: 'relative' }}>
             <div style={{
-                width: '100%',
-                height: '100%',
+                width: '100%', height: '100%',
                 transform: `rotate(${rotation}deg)`,
                 transformOrigin: 'center center',
                 opacity: opacity
             }} ref={centerRef}>
 
-                {!isLine && (
-                    <NodeResizer
-                        color="#646cff"
-                        isVisible={selected}
-                        minWidth={1}
-                        minHeight={1}
-                    />
-                )}
-
-                {selected && isLine && (
+                {/* --- Handles for 2D Shapes --- */}
+                {!isLine && selected && (
                     <>
-                        <div
-                            onPointerDown={(e) => onHandleDragStart(e, 'left')}
-                            className="nodrag"
-                            style={{
-                                position: 'absolute',
-                                left: 0,
-                                top: '50%',
-                                transform: 'translate(-50%, -50%)',
-                                width: '12px',
-                                height: '12px',
-                                background: '#646cff',
-                                borderRadius: '50%',
-                                cursor: 'crosshair',
-                                zIndex: 10,
-                                border: '2px solid white',
-                                boxSizing: 'border-box'
-                            }}
-                        />
-                        <div
-                            onPointerDown={(e) => onHandleDragStart(e, 'right')}
-                            className="nodrag"
-                            style={{
-                                position: 'absolute',
-                                right: 0,
-                                top: '50%',
-                                transform: 'translate(50%, -50%)',
-                                width: '12px',
-                                height: '12px',
-                                background: '#646cff',
-                                borderRadius: '50%',
-                                cursor: 'crosshair',
-                                zIndex: 10,
-                                border: '2px solid white',
-                                boxSizing: 'border-box'
-                            }}
-                        />
+                        <CustomHandle cursor="nw-resize" style={{ top: -6, left: -6 }} onPointerDown={(e) => onResizeStart(e, 'nw')} />
+                        <CustomHandle cursor="ne-resize" style={{ top: -6, right: -6 }} onPointerDown={(e) => onResizeStart(e, 'ne')} />
+                        <CustomHandle cursor="sw-resize" style={{ bottom: -6, left: -6 }} onPointerDown={(e) => onResizeStart(e, 'sw')} />
+                        <CustomHandle cursor="se-resize" style={{ bottom: -6, right: -6 }} onPointerDown={(e) => onResizeStart(e, 'se')} />
+                        <RotationHandle rotateRef={rotateRef} onMouseDown={onRotateStart} />
                     </>
                 )}
 
-                {selected && !isLine && (
-                    <RotationHandle rotateRef={rotateRef} onMouseDown={onRotateStart} />
+                {/* --- Handles for Line/Arrow --- */}
+                {isLine && selected && (
+                    <>
+                        <CustomHandle cursor="crosshair" style={{ top: '50%', left: 0, transform: 'translate(-50%, -50%)' }} onPointerDown={(e) => onLineDragStart(e, 'left')} />
+                        <CustomHandle cursor="crosshair" style={{ top: '50%', right: 0, transform: 'translate(50%, -50%)' }} onPointerDown={(e) => onLineDragStart(e, 'right')} />
+                    </>
                 )}
 
                 <div style={{
-                    width: '100%',
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--text-primary)',
-                    // Ensure marker is colored correctly if inherited? No, usage defines fill.
+                    width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)'
                 }}>
                     <svg
-                        // Visual Fix: 
-                        // For Rect/Circle: Use fixed 100x100 coord system (scaling)
-                        // For Line/Arrow: Use 100% size (Pixels)
                         viewBox={!isLine ? "0 0 100 100" : undefined}
-                        width="100%"
-                        height="100%"
+                        width="100%" height="100%"
                         preserveAspectRatio="none"
                         style={{ overflow: 'visible' }}
                     >
                         <defs>
-                            {/* Marker is now fixed size since we aren't scaling viewBox for Lines */}
                             <marker id={`arrowhead-${id}`} markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
                                 <polygon points="0 0, 6 2, 0 4" fill={commonProps.stroke} />
                             </marker>
@@ -245,7 +233,6 @@ const ShapeNode = ({ data, selected, id }) => {
                             <ellipse cx="50" cy="50" rx="50" ry="50" {...commonProps} />
                         )}
                         {shapeType === 'line' && (
-                            // Use percents for responsive layout in 1:1 mode
                             <line x1="0" y1="50%" x2="100%" y2="50%" {...commonProps} />
                         )}
                         {shapeType === 'arrow' && (
