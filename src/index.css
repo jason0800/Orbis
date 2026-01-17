@@ -103,3 +103,17 @@ button:focus-visible {
 .react-flow__node {
     font-family: inherit;
 }
+
+/* --- Cursor Overrides --- */
+
+/* Eraser Tool: Force Eraser cursor everywhere when tool is active */
+.tool-eraser .react-flow__pane,
+.tool-eraser .react-flow__node,
+.tool-eraser .react-flow__edge {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewport="0 0 24 24" fill="none" stroke="black" stroke-width="2"><path d="M18 10l-6-6L2 14l6 6 10-10z" /></svg>') 0 24, auto !important;
+}
+
+/* Select Tool: Force Move cursor when hovering over nodes */
+.tool-select .react-flow__node:hover {
+    cursor: move !important;
+}

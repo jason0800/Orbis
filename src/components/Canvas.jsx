@@ -42,6 +42,7 @@ function CanvasContent() {
     const wrapperRef = useRef(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [points, setPoints] = useState([]);
+    const [drawingState, setDrawingState] = useState(null); // { startPos: {x,y}, nodeId: string, type: string }
 
     // We can use a temporary overlay for drawing
     const drawingPath = useMemo(() => {
@@ -53,57 +54,124 @@ function CanvasContent() {
             case 'pan': return 'grab';
             case 'select': return 'default';
             case 'text': return 'text';
-            case 'eraser': return 'not-allowed'; // or custom cursor
+            case 'eraser': return `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewport="0 0 24 24" fill="none" stroke="black" stroke-width="2"><path d="M18 10l-6-6L2 14l6 6 10-10z" /></svg>') 0 24, auto`;
             default: return 'crosshair'; // For creation tools
         }
     };
 
     const onPaneClick = useCallback((event) => {
-        // Prevent click if we were drawing/dragging or rotating
-        if (isDrawing || isInteracting) return;
+        // Prevent click if we were interaction (dragging/resizing)
+        // Note: Drag-to-draw (drawingState) handled by Up, not Click.
+        if (isDrawing || isInteracting || drawingState) return;
 
         const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
 
         if (activeTool === 'node') {
             addFolderNode(position);
-            setActiveTool('select'); // User wants to persist tool
-        } else if (['rectangle', 'circle', 'diamond', 'line', 'arrow'].includes(activeTool)) {
-            addShapeNode(activeTool, position);
             setActiveTool('select');
         } else if (activeTool === 'text') {
             addTextNode(position);
             setActiveTool('select');
         }
-    }, [activeTool, addFolderNode, addShapeNode, addTextNode, screenToFlowPosition, setActiveTool, isDrawing, isInteracting]);
+    }, [activeTool, addFolderNode, addTextNode, screenToFlowPosition, setActiveTool, isDrawing, isInteracting, drawingState]);
 
-    // We use Screen Position for the drawing overlay to avoid transform issues during draw
-    // BUT we need the points in Flow Position for the stored node.
-
+    // Used for selecting eraser target eraser
     const onNodeClick = useCallback((e, node) => {
         if (activeTool === 'eraser') {
             deleteNode(node.id);
         }
     }, [activeTool, deleteNode]);
 
-    // Freehand Drawing Handlers (on the wrapper, to capture events everywhere)
+    // --- Interaction Handlers ---
+
     const onMouseDown = (e) => {
-        if (activeTool !== 'freehand') return;
-        setIsDrawing(true);
-        // Start a new path
+        if (isInteracting) return;
+
         const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-        setPoints([pos]);
+
+        // Freehand
+        if (activeTool === 'freehand') {
+            setIsDrawing(true);
+            setPoints([pos]);
+            return;
+        }
+
+        // Shape Drag-to-Draw
+        if (['rectangle', 'circle', 'diamond', 'line', 'arrow'].includes(activeTool)) {
+            // Create initial node
+            useAppStore.getState().addShapeNode(activeTool, pos);
+
+            // Get the ID of the new node (assuming it's the last one added synchronous)
+            const nodes = useAppStore.getState().nodes;
+            const newNode = nodes[nodes.length - 1];
+
+            if (newNode) {
+                // Initialize small
+                useAppStore.getState().updateNode(newNode.id, {
+                    style: { width: 1, height: 1 },
+                    data: { ...newNode.data, rotation: 0 }
+                });
+
+                setDrawingState({
+                    startPos: pos,
+                    nodeId: newNode.id,
+                    type: activeTool
+                });
+            }
+        }
     };
 
     const onMouseMove = (e) => {
-        if (!isDrawing || activeTool !== 'freehand') return;
         const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-        setPoints(prev => [...prev, pos]);
+
+        // Freehand Update
+        if (isDrawing && activeTool === 'freehand') {
+            setPoints(prev => [...prev, pos]);
+            return;
+        }
+
+        // Shape Update
+        if (drawingState) {
+            const { startPos, nodeId, type } = drawingState;
+
+            if (type === 'line' || type === 'arrow') {
+                // Line Logic: Start -> Current
+                const dx = pos.x - startPos.x;
+                const dy = pos.y - startPos.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+                // Center is midpoint
+                const cx = (startPos.x + pos.x) / 2;
+                const cy = (startPos.y + pos.y) / 2;
+
+                const h = 20; // Fixed visual height container for line
+                useAppStore.getState().updateNode(nodeId, {
+                    position: { x: cx - dist / 2, y: cy - h / 2 },
+                    style: { width: Math.max(1, dist), height: h },
+                    data: { rotation: angle, shapeType: type }
+                });
+
+            } else {
+                // Rect/Circle Logic: Bounds
+                // Determine Top-Left and Dimensions
+                const minX = Math.min(startPos.x, pos.x);
+                const minY = Math.min(startPos.y, pos.y);
+                const width = Math.abs(pos.x - startPos.x);
+                const height = Math.abs(pos.y - startPos.y);
+
+                useAppStore.getState().updateNode(nodeId, {
+                    position: { x: minX, y: minY },
+                    style: { width: Math.max(1, width), height: Math.max(1, height) }
+                });
+            }
+        }
     };
 
     const onMouseUp = () => {
+        // Finalize Freehand
         if (isDrawing && activeTool === 'freehand') {
             if (points.length > 2) {
-                // Calculate Bounding Box
                 const xs = points.map(p => p.x);
                 const ys = points.map(p => p.y);
                 const minX = Math.min(...xs);
@@ -114,7 +182,6 @@ function CanvasContent() {
                 const width = Math.max(20, maxX - minX);
                 const height = Math.max(20, maxY - minY);
 
-                // Normalize points relative to bounding box
                 const relativePoints = points.map(p => ({
                     x: p.x - minX,
                     y: p.y - minY
@@ -128,18 +195,22 @@ function CanvasContent() {
             }
             setPoints([]);
             setIsDrawing(false);
+            useAppStore.getState().setActiveTool('select');
+        }
+
+        // Finalize Shape
+        if (drawingState) {
+            setDrawingState(null);
+            useAppStore.getState().setActiveTool('select');
         }
     };
 
     // Render Overlay
-    // We need to render the current 'points' (which are in Flow coords)
-    // inside an SVG that is transformed by the viewport, OR, project them to screen.
-    // Easiest: SVG covering the screen, points projected to screen.
-
     const viewport = getViewport();
 
     return (
         <div
+            className={`tool-${activeTool}`}
             style={{ width: '100%', height: '100%', cursor: getCursor() }}
             ref={wrapperRef}
             onMouseDown={onMouseDown}
@@ -157,11 +228,12 @@ function CanvasContent() {
                 onPaneClick={onPaneClick}
                 onNodeClick={onNodeClick}
                 colorMode={theme}
-                panOnDrag={activeTool === 'pan' ? [0, 1] : [1]} // Allow panning with Middle Mouse (1) always, Left (0) if pan tool
-                selectionOnDrag={activeTool === 'select'} // Rect selection when tool is 'select'
-                panOnScroll={true} // Allow scrolling
+                selectionOnDrag={activeTool === 'select'}
+                panOnScroll={true}
                 zoomOnScroll={true}
-                preventScrolling={false} // Allow native scroll? No, usually block
+                preventScrolling={false}
+                // Disable default pane drag if we are drawing
+                panOnDrag={(!isDrawing && !drawingState && activeTool === 'select') || activeTool === 'pan' ? [0, 1] : [1]} // Allow MM pan always. Left pan only if select/pan
             >
                 <Background variant={gridMode === 'none' ? undefined : gridMode} gap={16} />
                 <Controls />

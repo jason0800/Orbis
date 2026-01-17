@@ -11,18 +11,18 @@ const RotationHandle = ({ rotateRef, onMouseDown }) => {
             title="Rotate"
             style={{
                 position: 'absolute',
-                top: '-25px',
+                top: '-18px',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                width: '6px',
-                height: '6px',
+                width: '7px',
+                height: '7px',
                 background: '#646cff',
                 borderRadius: '50%',
                 cursor: 'grab',
                 zIndex: 100
             }}
         >
-            <div style={{ position: 'absolute', top: '100%', left: '50%', width: '1px', height: '15px', background: '#646cff', transform: 'translateX(-50%)' }} />
+            {/* Stick removed as per user request */}
         </div>
     );
 };

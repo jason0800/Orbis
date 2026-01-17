@@ -1,22 +1,43 @@
 import React, { memo, useCallback, useState, useEffect } from 'react';
-import { NodeResizer } from '@xyflow/react';
+import { NodeResizer, NodeResizeControl } from '@xyflow/react';
 import { useReactFlow } from '@xyflow/react';
 import useAppStore from '../store/useAppStore';
 import { useNodeRotate } from '../hooks/useNodeRotate';
 import RotationHandle from './RotationHandle';
 
 const ShapeNode = ({ data, selected, id }) => {
-    const { shapeType = 'rectangle', stroke, rotation = 0 } = data;
+    const {
+        shapeType = 'rectangle',
+        stroke,
+        fill = 'transparent',
+        strokeWidth = 2,
+        strokeStyle = 'solid',
+        opacity = 1,
+        rotation = 0
+    } = data;
+
     const { rotateRef, centerRef, onRotateStart } = useNodeRotate(id, rotation);
     const { screenToFlowPosition, getNode } = useReactFlow();
     const updateNode = useAppStore((state) => state.updateNode);
-    const updateNodeData = useAppStore((state) => state.updateNodeData);
+
+    // Map strokeStyle to dasharray
+    const getStrokeDasharray = (style) => {
+        switch (style) {
+            case 'dashed': return '5,5';
+            case 'dotted': return '1,1';
+            default: return 'none';
+        }
+    };
 
     const commonProps = {
         stroke: (!stroke || stroke === '#fff') ? 'var(--shape-stroke)' : stroke,
-        strokeWidth: 2,
-        fill: 'transparent',
-        vectorEffect: "non-scaling-stroke",
+        strokeWidth: strokeWidth,
+        fill: fill,
+        fillOpacity: fill === 'transparent' ? 0 : 1, // Ensure transparency is handled
+        strokeDasharray: getStrokeDasharray(strokeStyle),
+        opacity: opacity,
+        vectorEffect: "non-scaling-stroke", // Keeps stroke width constant when scaling SVG? 
+        // Note: For Line/Arrow we are now NOT scaling the SVG viewBox, so non-scaling-stroke is less critical there, but good for Rect/Circle.
     };
 
     // --- Line / Arrow Handling Logic ---
@@ -31,23 +52,25 @@ const ShapeNode = ({ data, selected, id }) => {
 
         const startX = node.position.x;
         const startY = node.position.y;
-        const w = node.measured?.width || node.style?.width || 100; // Use measured if available for accuracy
-        const h = node.measured?.height || node.style?.height || 100;
-        const rotRad = (rotation * Math.PI) / 180;
 
-        // Calculate Center
+        // Prioritize Style Width
+        let w = parseFloat(node.style?.width);
+        if (isNaN(w)) w = node.measured?.width ?? 100;
+
+        let h = parseFloat(node.style?.height);
+        if (isNaN(h)) h = node.measured?.height ?? 100;
+
+        const currentRot = node.data?.rotation ?? rotation ?? 0;
+        const rotRad = (currentRot * Math.PI) / 180;
+
         const cx = startX + w / 2;
         const cy = startY + h / 2;
 
-        // Calculate Endpoints based entirely on Center + Width + Rotation
-        // We assume the line is centered in the box horizontally.
-        // Left Point (Start): Center - Rotated(w/2)
         const cos = Math.cos(rotRad);
         const sin = Math.sin(rotRad);
-
         const halfW = w / 2;
 
-        // Vector from Center to Right
+        // Handles are always at ends of widthVector (centered vertically)
         const vecX = halfW * cos;
         const vecY = halfW * sin;
 
@@ -63,44 +86,49 @@ const ShapeNode = ({ data, selected, id }) => {
             let fixedPoint, movingPoint;
 
             if (handleType === 'left') {
-                fixedPoint = pRight; // Right stays fixed
+                fixedPoint = pRight;
                 movingPoint = mousePos;
             } else {
-                fixedPoint = pLeft; // Left stays fixed
+                fixedPoint = pLeft;
                 movingPoint = mousePos;
             }
 
-            // Calculate new Center
-            const newCx = (fixedPoint.x + movingPoint.x) / 2;
-            const newCy = (fixedPoint.y + movingPoint.y) / 2;
-
-            // Calculate new Width (distance)
             const dx = movingPoint.x - fixedPoint.x;
             const dy = movingPoint.y - fixedPoint.y;
-            const newWidth = Math.sqrt(dx * dx + dy * dy);
+            const dist = Math.sqrt(dx * dx + dy * dy);
 
-            // Calculate new Rotation
-            // If dragging Right: angle is fixed -> moving
-            // If dragging Left: angle is moving -> fixed (Wait, consistent direction Left->Right)
-            // Vector ALWAYS Left -> Right
-            let newAngleRad;
+            const newWidth = Math.max(20, dist);
+
+            let angleRad;
             if (handleType === 'right') {
-                newAngleRad = Math.atan2(dy, dx);
+                angleRad = Math.atan2(dy, dx);
             } else {
-                // Vector is Fixed(Right) - Moving(Left) = (Rx-Lx, Ry-Ly)
-                // Wait.
-                // Vector L->R = (Right.x - Left.x, Right.y - Left.y)
-                // If dragging Left: Right is Fixed. Left is Moving.
-                // Vector = Fixed - Moving.
-                newAngleRad = Math.atan2(fixedPoint.y - movingPoint.y, fixedPoint.x - movingPoint.x);
+                angleRad = Math.atan2(fixedPoint.y - movingPoint.y, fixedPoint.x - movingPoint.x);
+            }
+            const newAngleDeg = (angleRad * 180) / Math.PI;
+
+            // Recenter
+            const newCos = Math.cos(angleRad);
+            const newSin = Math.sin(angleRad);
+
+            let newCx, newCy;
+
+            if (handleType === 'right') {
+                // Left is Fixed
+                const newRightX = fixedPoint.x + newWidth * newCos;
+                const newRightY = fixedPoint.y + newWidth * newSin;
+                newCx = (fixedPoint.x + newRightX) / 2;
+                newCy = (fixedPoint.y + newRightY) / 2;
+            } else {
+                // Right is Fixed
+                const newLeftX = fixedPoint.x - newWidth * newCos;
+                const newLeftY = fixedPoint.y - newWidth * newSin;
+                newCx = (newLeftX + fixedPoint.x) / 2;
+                newCy = (newLeftY + fixedPoint.y) / 2;
             }
 
-            const newAngleDeg = (newAngleRad * 180) / Math.PI;
-
-            // Update Node
-            // New Position (Top-Left) = NewCenter - HalfDims
             const newX = newCx - newWidth / 2;
-            const newY = newCy - h / 2; // Height stays constant? standard 20px minHeight?
+            const newY = newCy - h / 2;
 
             updateNode(id, {
                 position: { x: newX, y: newY },
@@ -127,22 +155,20 @@ const ShapeNode = ({ data, selected, id }) => {
                 height: '100%',
                 transform: `rotate(${rotation}deg)`,
                 transformOrigin: 'center center',
+                opacity: opacity
             }} ref={centerRef}>
 
-                {/* Standard Resizer for 2D shapes (Rectangle, Circle, Diamond) */}
                 {!isLine && (
                     <NodeResizer
                         color="#646cff"
                         isVisible={selected}
-                        minWidth={20}
-                        minHeight={20}
+                        minWidth={1}
+                        minHeight={1}
                     />
                 )}
 
-                {/* Custom Handles for Lines/Arrows */}
                 {selected && isLine && (
                     <>
-                        {/* Left Handle */}
                         <div
                             onPointerDown={(e) => onHandleDragStart(e, 'left')}
                             className="nodrag"
@@ -155,13 +181,12 @@ const ShapeNode = ({ data, selected, id }) => {
                                 height: '12px',
                                 background: '#646cff',
                                 borderRadius: '50%',
-                                cursor: 'crosshair', // or default
+                                cursor: 'crosshair',
                                 zIndex: 10,
                                 border: '2px solid white',
                                 boxSizing: 'border-box'
                             }}
                         />
-                        {/* Right Handle */}
                         <div
                             onPointerDown={(e) => onHandleDragStart(e, 'right')}
                             className="nodrag"
@@ -194,15 +219,22 @@ const ShapeNode = ({ data, selected, id }) => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: 'var(--text-primary)',
+                    // Ensure marker is colored correctly if inherited? No, usage defines fill.
                 }}>
                     <svg
-                        viewBox="0 0 100 100"
+                        // Visual Fix: 
+                        // For Rect/Circle: Use fixed 100x100 coord system (scaling)
+                        // For Line/Arrow: Use 100% size (Pixels)
+                        viewBox={!isLine ? "0 0 100 100" : undefined}
+                        width="100%"
+                        height="100%"
                         preserveAspectRatio="none"
-                        style={{ width: '100%', height: '100%', overflow: 'visible' }}
+                        style={{ overflow: 'visible' }}
                     >
                         <defs>
-                            <marker id={`arrowhead-${id}`} markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                                <polygon points="0 0, 10 3.5, 0 7" fill={commonProps.stroke} />
+                            {/* Marker is now fixed size since we aren't scaling viewBox for Lines */}
+                            <marker id={`arrowhead-${id}`} markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
+                                <polygon points="0 0, 6 2, 0 4" fill={commonProps.stroke} />
                             </marker>
                         </defs>
 
@@ -213,10 +245,11 @@ const ShapeNode = ({ data, selected, id }) => {
                             <ellipse cx="50" cy="50" rx="50" ry="50" {...commonProps} />
                         )}
                         {shapeType === 'line' && (
-                            <line x1="0" y1="50" x2="100" y2="50" {...commonProps} />
+                            // Use percents for responsive layout in 1:1 mode
+                            <line x1="0" y1="50%" x2="100%" y2="50%" {...commonProps} />
                         )}
                         {shapeType === 'arrow' && (
-                            <line x1="0" y1="50" x2="100" y2="50" {...commonProps} markerEnd={`url(#arrowhead-${id})`} />
+                            <line x1="0" y1="50%" x2="100%" y2="50%" {...commonProps} markerEnd={`url(#arrowhead-${id})`} />
                         )}
                     </svg>
                 </div>
