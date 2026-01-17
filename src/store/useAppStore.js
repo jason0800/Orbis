@@ -108,6 +108,14 @@ const useAppStore = create((set, get) => ({
         }));
     },
 
+    updateNode: (id, fields) => {
+        set((state) => ({
+            nodes: state.nodes.map((node) =>
+                node.id === id ? { ...node, ...fields } : node
+            ),
+        }));
+    },
+
     setActiveTool: (tool) => {
         console.log('Switching tool to:', tool);
         set({ activeTool: tool });
