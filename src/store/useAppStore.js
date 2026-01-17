@@ -306,6 +306,40 @@ const useAppStore = create((set, get) => ({
         });
 
         set({ nodes: newNodes, edges: newEdges });
+    },
+
+    changeNodeOrder: (nodeId, direction) => {
+        const { nodes } = get();
+        const index = nodes.findIndex((n) => n.id === nodeId);
+        if (index === -1) return;
+
+        let newNodes = [...nodes];
+        const node = { ...newNodes[index] }; // Clone to ensure refresh
+
+        if (direction === 'front') {
+            if (index === newNodes.length - 1) return; // Already at front
+            newNodes.splice(index, 1);
+            newNodes.push(node);
+        } else if (direction === 'back') {
+            if (index === 0) return; // Already at back
+            newNodes.splice(index, 1);
+            newNodes.unshift(node);
+        } else if (direction === 'forward') {
+            if (index === newNodes.length - 1) return;
+            // Swap
+            const next = newNodes[index + 1];
+            newNodes[index] = next;
+            newNodes[index + 1] = node;
+        } else if (direction === 'backward') {
+            if (index === 0) return;
+            // Swap
+            const prev = newNodes[index - 1];
+            newNodes[index] = prev;
+            newNodes[index - 1] = node;
+        }
+
+        get().pushToHistory();
+        set({ nodes: newNodes });
     }
 
 }));

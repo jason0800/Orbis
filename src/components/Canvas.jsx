@@ -261,6 +261,7 @@ export default function Canvas() {
                 preventScrolling={false}
                 minZoom={0.1}
                 panOnDrag={activeTool === 'pan' ? [0, 1, 2] : [1, 2]}
+                elevateNodesOnSelect={false}
             >
                 {/* Render Background only if not 'none' */}
                 {gridMode !== 'none' && <Background variant={gridMode} gap={16} />}

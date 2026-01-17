@@ -37,6 +37,7 @@ function App() {
             root.style.setProperty('--node-text', '#212529');
             root.style.setProperty('--shape-stroke', '#000000');
             root.style.setProperty('--border-color', '#dee2e6');
+            // Ensure accent matches CSS if needed, but CSS handles it globally. 
         }
     }, [theme]);
 

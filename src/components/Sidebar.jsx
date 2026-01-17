@@ -4,7 +4,8 @@ import { useReactFlow } from '@xyflow/react';
 import {
     Save, FolderOpen, Download,
     Sun, Moon, Trash2,
-    Copy, Search
+    Copy, Search,
+    ChevronsUp, ChevronsDown, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { exportToOrbisFile, importOrbisFile, exportToZip } from '../utils/persistence';
 
@@ -37,7 +38,8 @@ const Sidebar = () => {
         activeTool,
         defaultProperties,
         setDefaultProperties,
-        copySelectedNodes
+        copySelectedNodes,
+        changeNodeOrder
     } = useAppStore();
 
     const { fitView } = useReactFlow();
@@ -278,9 +280,9 @@ const Sidebar = () => {
                                         style={{
                                             flex: 1,
                                             height: '28px',
-                                            background: (strokeWidth === w) ? 'rgba(100, 108, 255, 0.2)' : 'rgba(0,0,0,0.05)', // Accent vs Grey
-                                            border: (strokeWidth === w) ? '1px solid var(--accent-color)' : '1px solid transparent',
-                                            color: (strokeWidth === w) ? 'var(--accent-color)' : 'var(--text-primary)',
+                                            background: (strokeWidth === w) ? 'rgba(180, 230, 160, 0.3)' : 'rgba(0,0,0,0.05)', // Accent vs Grey
+                                            border: (strokeWidth === w) ? '1px solid #b4e6a0' : '1px solid transparent',
+                                            color: (strokeWidth === w) ? '#3a6b24' : 'var(--text-primary)',
                                             borderRadius: '4px',
                                             cursor: 'pointer',
                                             boxShadow: 'none',
@@ -316,8 +318,8 @@ const Sidebar = () => {
                                         style={{
                                             flex: 1,
                                             height: '28px',
-                                            background: (strokeStyle === s) ? 'rgba(100, 108, 255, 0.2)' : 'rgba(0,0,0,0.05)', // Accent vs Grey
-                                            border: (strokeStyle === s) ? '1px solid var(--accent-color)' : '1px solid transparent',
+                                            background: (strokeStyle === s) ? 'rgba(180, 230, 160, 0.3)' : 'rgba(0,0,0,0.05)', // Accent vs Grey
+                                            border: (strokeStyle === s) ? '1px solid #b4e6a0' : '1px solid transparent',
                                             borderRadius: '4px',
                                             cursor: 'pointer',
                                             boxShadow: 'none',
@@ -329,7 +331,7 @@ const Sidebar = () => {
                                         <svg width="100%" height="4" style={{ overflow: 'visible' }}>
                                             <line
                                                 x1="0" y1="2" x2="100%" y2="2"
-                                                stroke={strokeStyle === s ? 'var(--accent-color)' : 'var(--text-primary)'}
+                                                stroke={strokeStyle === s ? '#3a6b24' : 'var(--text-primary)'}
                                                 strokeWidth="2"
                                                 strokeDasharray={
                                                     s === 'solid' ? 'none' :
@@ -367,6 +369,43 @@ const Sidebar = () => {
                         }}
                     />
                 </div>
+
+                {/* Draw Order */}
+                {selectedNode && (
+                    <div style={controlGroupStyle}>
+                        <label style={labelStyle}>Draw Order</label>
+                        <div style={{ display: 'flex', gap: '4px', marginTop: '4px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '6px' }}>
+                            <button
+                                onClick={() => changeNodeOrder(selectedNode.id, 'back')}
+                                title="Send to Back"
+                                style={drawOrderBtnStyle}
+                            >
+                                <ChevronsDown size={16} />
+                            </button>
+                            <button
+                                onClick={() => changeNodeOrder(selectedNode.id, 'backward')}
+                                title="Send Backward"
+                                style={drawOrderBtnStyle}
+                            >
+                                <ChevronDown size={16} />
+                            </button>
+                            <button
+                                onClick={() => changeNodeOrder(selectedNode.id, 'forward')}
+                                title="Bring Forward"
+                                style={drawOrderBtnStyle}
+                            >
+                                <ChevronUp size={16} />
+                            </button>
+                            <button
+                                onClick={() => changeNodeOrder(selectedNode.id, 'front')}
+                                title="Bring to Front"
+                                style={drawOrderBtnStyle}
+                            >
+                                <ChevronsUp size={16} />
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {
                     selectedNode && (
@@ -573,6 +612,22 @@ const sectionHeaderStyle = {
     color: 'var(--text-primary)',
     paddingBottom: '8px',
     borderBottom: '1px solid var(--border-color)'
+};
+
+const drawOrderBtnStyle = {
+    flex: 1,
+    height: '28px',
+    padding: '0', // Override global padding
+    minWidth: '0', // Allow shrink
+    background: 'rgba(0,0,0,0.05)', // Grey background
+    border: '1px solid transparent', // Default border
+    color: 'var(--text-primary)',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background 0.2s',
 };
 
 export default Sidebar;

@@ -7,11 +7,13 @@ const FolderNode = ({ data, selected, id }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(data.name);
     const [description, setDescription] = useState(data.description || '');
+    const [hasError, setHasError] = useState(false);
     const { updateNodeData } = useAppStore();
     const wrapperRef = useRef(null);
 
     const handleDoubleClick = () => {
         setIsEditing(true);
+        setHasError(false); // Reset error on open
     };
 
     const handleBlur = (e) => {
@@ -60,19 +62,59 @@ const FolderNode = ({ data, selected, id }) => {
 
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: (isEditing || data.description) ? '4px' : '0', justifyContent: 'space-between', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                    <Folder size={20} color="#646cff" style={{ marginRight: '8px', flexShrink: 0 }} />
+                    <Folder size={20} color="#b4e6a0" style={{ marginRight: '8px', flexShrink: 0 }} />
                     {isEditing ? (
                         <input
                             className="nodrag"
                             value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            onBlur={handleBlur}
+                            onChange={(e) => {
+                                const newName = e.target.value;
+                                setName(newName);
+
+                                // Live Validation
+                                const trimmed = newName.trim();
+                                const siblings = useAppStore.getState().nodes.filter(n =>
+                                    n.id !== id &&
+                                    n.type === 'folderNode' &&
+                                    n.data.parentId === data.parentId
+                                );
+                                const isDup = siblings.some(n => n.data.name.trim().toLowerCase() === trimmed.toLowerCase());
+                                setHasError(isDup);
+                            }}
+                            onBlur={(e) => {
+                                // Prevent closing if we are just switching focus to another element inside this node
+                                if (wrapperRef.current && wrapperRef.current.contains(e.relatedTarget)) {
+                                    return;
+                                }
+
+                                const trimmedName = name.trim();
+                                // Duplicate check again for safety (and getting siblings fresh)
+                                const siblings = useAppStore.getState().nodes.filter(n =>
+                                    n.id !== id &&
+                                    n.type === 'folderNode' &&
+                                    n.data.parentId === data.parentId
+                                );
+                                const isDuplicate = siblings.some(n => n.data.name.trim().toLowerCase() === trimmedName.toLowerCase());
+
+                                if (isDuplicate || !trimmedName) {
+                                    if (isDuplicate) alert(`A folder named "${trimmedName}" already exists.`);
+                                    setName(data.name); // Revert
+                                    setHasError(false);
+                                    setIsEditing(false);
+                                    return;
+                                }
+
+                                setIsEditing(false);
+                                setHasError(false);
+                                updateNodeData(id, { name: trimmedName, description });
+                            }}
                             autoFocus
                             placeholder="Folder Name"
                             style={{
                                 background: 'transparent',
                                 border: 'none',
-                                color: 'var(--node-text)',
+                                borderBottom: hasError ? '2px solid red' : '1px solid var(--accent-color)',
+                                color: hasError ? 'red' : 'var(--node-text)',
                                 padding: '0',
                                 width: '100%',
                                 fontWeight: 'bold',
