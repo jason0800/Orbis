@@ -36,7 +36,7 @@ function CanvasContent() {
         setActiveTool
     } = useAppStore();
 
-    const { screenToFlowPosition, flowToScreenPosition } = useReactFlow();
+    const { screenToFlowPosition, flowToScreenPosition, getViewport } = useReactFlow();
     const wrapperRef = useRef(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [points, setPoints] = useState([]);
@@ -75,6 +75,9 @@ function CanvasContent() {
         }
     }, [activeTool, addFolderNode, addShapeNode, addTextNode, screenToFlowPosition, setActiveTool, isDrawing]);
 
+    // We use Screen Position for the drawing overlay to avoid transform issues during draw
+    // BUT we need the points in Flow Position for the stored node.
+
     const onNodeClick = useCallback((e, node) => {
         if (activeTool === 'eraser') {
             deleteNode(node.id);
@@ -85,6 +88,7 @@ function CanvasContent() {
     const onMouseDown = (e) => {
         if (activeTool !== 'freehand') return;
         setIsDrawing(true);
+        // Start a new path
         const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
         setPoints([pos]);
     };
@@ -98,20 +102,40 @@ function CanvasContent() {
     const onMouseUp = () => {
         if (isDrawing && activeTool === 'freehand') {
             if (points.length > 2) {
-                // Calculate bounding box to normalize? Or just save as is. 
-                // Saving absolute points is easier for now, but making it a node means it usually has a position.
-                // Let's set the node position to the first point, and adjust other points relative to it.
-                const startX = points[0].x;
-                const startY = points[0].y;
-                const relativePoints = points.map(p => ({ x: p.x - startX, y: p.y - startY }));
+                // Calculate Bounding Box
+                const xs = points.map(p => p.x);
+                const ys = points.map(p => p.y);
+                const minX = Math.min(...xs);
+                const maxX = Math.max(...xs);
+                const minY = Math.min(...ys);
+                const maxY = Math.max(...ys);
 
-                addFreehandNode({ x: startX, y: startY }, relativePoints);
+                const width = Math.max(20, maxX - minX);
+                const height = Math.max(20, maxY - minY);
+
+                // Normalize points relative to bounding box
+                const relativePoints = points.map(p => ({
+                    x: p.x - minX,
+                    y: p.y - minY
+                }));
+
+                addFreehandNode(
+                    { x: minX, y: minY },
+                    relativePoints,
+                    { width, height }
+                );
             }
             setPoints([]);
             setIsDrawing(false);
-            // Optional: Switch back to select? kept active for continuous drawing
         }
     };
+
+    // Render Overlay
+    // We need to render the current 'points' (which are in Flow coords)
+    // inside an SVG that is transformed by the viewport, OR, project them to screen.
+    // Easiest: SVG covering the screen, points projected to screen.
+
+    const viewport = getViewport();
 
     return (
         <div
@@ -134,28 +158,38 @@ function CanvasContent() {
                 colorMode={theme}
                 panOnDrag={activeTool === 'pan'} // ONLY pan when tool is 'pan'
                 selectionOnDrag={activeTool === 'select'} // Rect selection when tool is 'select'
-                panOnScroll={true}
+                panOnScroll={true} // Allow scrolling
                 zoomOnScroll={true}
-                preventScrolling={false}
+                preventScrolling={false} // Allow native scroll? No, usually block
             >
                 <Background variant={gridMode === 'none' ? undefined : gridMode} gap={16} />
                 <Controls />
                 <MiniMap nodeStrokeWidth={3} zoomable pannable />
 
-                {/* Temporary Drawing Overlay */}
+                {/* Live Drawing Overlay using React Flow Viewport Transform */}
                 {isDrawing && points.length > 0 && (
-                    <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 10000 }}>
-                        {/* We need to transform these flow coordinates back to screen/pixel coordinates for the fixed SVG, 
-                            OR put this SVG inside the ReactFlow transform pane (custom layer). 
-                            Actually, simplest is to use ReactFlow Custom Layer, but that requires more setup.
-                            For now, this overlay might be misaligned if we zoom/pan WHILE drawing (which we shouldn't).
-                            Wait: points are in Flow coords. SVG is 100% of viewport. We need to project points.
-                        */}
-                        {/*  Implementation Detail: doing proper projection for the pending line is complex without a custom layer. 
-                            So for V1, let's just accept we won't see the line WHILE drawing unless we solve this.
-                            Or... we can project them.
-                       */}
-                    </svg>
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        zIndex: 2000,
+                        pointerEvents: 'none',
+                        transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+                        transformOrigin: '0 0'
+                    }}>
+                        <svg style={{ width: '100000px', height: '100000px', overflow: 'visible' }}>
+                            <path
+                                d={drawingPath}
+                                stroke={theme === 'dark' ? '#fff' : '#000'}
+                                strokeWidth={3}
+                                fill="none"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </svg>
+                    </div>
                 )}
             </ReactFlow>
         </div>

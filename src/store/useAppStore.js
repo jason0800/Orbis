@@ -70,13 +70,13 @@ const useAppStore = create((set, get) => ({
         set((state) => ({ nodes: [...state.nodes, newNode] }));
     },
 
-    addFreehandNode: (position, points) => {
+    addFreehandNode: (position, points, size = { width: 100, height: 100 }) => {
         const newNode = {
             id: uuidv4(),
-            type: 'freehandNode', // We will need to create this component
+            type: 'freehandNode',
             position,
-            data: { points },
-            style: { width: '100%', height: '100%' }, // SVG overlay style
+            data: { points, width: size.width, height: size.height },
+            style: { width: size.width, height: size.height },
         };
         set((state) => ({ nodes: [...state.nodes, newNode] }));
     },

@@ -65,37 +65,62 @@ const ShapeNode = ({ data, selected, id }) => {
 
     return (
         <div style={{ width: '100%', height: '100%', minWidth: '50px', minHeight: '50px', position: 'relative' }}>
-            <NodeResizer
-                color="#646cff"
-                isVisible={selected}
-                minWidth={20}
-                minHeight={20}
-            />
-            {/* Rotation Handle */}
-            {selected && (
-                <div
-                    ref={rotateRef}
-                    onMouseDown={onRotateStart}
-                    className="nodrag"
-                    style={{
-                        position: 'absolute',
-                        top: '-30px',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        width: '12px',
-                        height: '12px',
-                        background: '#646cff',
-                        borderRadius: '50%',
-                        cursor: 'grab',
-                        zIndex: 100
-                    }}
-                >
-                    <div style={{ position: 'absolute', top: '100%', left: '50%', width: '1px', height: '20px', background: '#646cff', transform: 'translateX(-50%)' }} />
-                </div>
-            )}
 
-            <div style={style} ref={centerRef}>
-                <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+            {/* 
+                Structure: 
+                Outer: Positioned by ReactFlow (x, y)
+                InnerRotator: Rotated by transform
+                Content: SVG
+            */}
+
+            <div style={{
+                width: '100%',
+                height: '100%',
+                transform: `rotate(${rotation}deg)`,
+                transformOrigin: 'center center',
+            }} ref={centerRef}>
+
+                <NodeResizer
+                    color="#646cff"
+                    isVisible={selected}
+                    minWidth={20}
+                    minHeight={20}
+                />
+
+                {/* Rotation Handle inside the rotated container so it stays at the "top" */}
+                {selected && (
+                    <div
+                        ref={rotateRef}
+                        onMouseDown={onRotateStart}
+                        className="nodrag"
+                        title="Rotate"
+                        style={{
+                            position: 'absolute',
+                            top: '-30px',
+                            left: '50%',
+                            transform: 'translateX(-50%)', // Keeps it centered horizontally relative to the node
+                            // We don't need to rotate this handle itself, as it inherits parent rotation
+                            width: '12px',
+                            height: '12px',
+                            background: '#646cff',
+                            borderRadius: '50%',
+                            cursor: 'grab',
+                            zIndex: 100
+                        }}
+                    >
+                        <div style={{ position: 'absolute', top: '100%', left: '50%', width: '1px', height: '20px', background: '#646cff', transform: 'translateX(-50%)' }} />
+                    </div>
+                )}
+
+                <svg style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--text-primary)',
+                    overflow: 'visible'
+                }}>
                     <defs>
                         <marker id={`arrowhead-${id}`} markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
                             <polygon points="0 0, 10 3.5, 0 7" fill={commonProps.stroke} />

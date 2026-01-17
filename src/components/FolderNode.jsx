@@ -30,6 +30,8 @@ const FolderNode = ({ data, selected, id }) => {
             ref={wrapperRef}
             onDoubleClick={handleDoubleClick}
             style={{
+                width: '100%',
+                height: '100%',
                 padding: '10px',
                 borderRadius: '8px',
                 background: 'var(--node-bg)',
@@ -37,6 +39,9 @@ const FolderNode = ({ data, selected, id }) => {
                 minWidth: '150px',
                 color: 'var(--node-text)',
                 boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                display: 'flex',
+                flexDirection: 'column',
+                boxSizing: 'border-box'
             }}
         >
             <NodeResizer
@@ -93,7 +98,7 @@ const FolderNode = ({ data, selected, id }) => {
             </div>
 
             {isEditing ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
                     <textarea
                         className="nodrag"
                         value={description}
@@ -106,8 +111,9 @@ const FolderNode = ({ data, selected, id }) => {
                             padding: '2px 4px',
                             borderRadius: '4px',
                             width: '100%',
+                            height: '100%', // Fill available space
+                            flex: 1,
                             fontSize: '0.85em',
-                            minHeight: '60px',
                             resize: 'none',
                             fontFamily: 'inherit'
                         }}
