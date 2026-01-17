@@ -66,13 +66,13 @@ function CanvasContent() {
 
         if (activeTool === 'node') {
             addFolderNode(position);
-            // setActiveTool('select'); // User wants to persist tool
+            setActiveTool('select'); // User wants to persist tool
         } else if (['rectangle', 'circle', 'diamond', 'line', 'arrow'].includes(activeTool)) {
             addShapeNode(activeTool, position);
-            // setActiveTool('select');
+            setActiveTool('select');
         } else if (activeTool === 'text') {
             addTextNode(position);
-            // setActiveTool('select');
+            setActiveTool('select');
         }
     }, [activeTool, addFolderNode, addShapeNode, addTextNode, screenToFlowPosition, setActiveTool, isDrawing, isInteracting]);
 

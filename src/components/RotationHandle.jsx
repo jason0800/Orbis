@@ -6,7 +6,7 @@ const RotationHandle = ({ rotateRef, onMouseDown }) => {
             ref={rotateRef}
             onMouseDown={onMouseDown}
             onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
-            onMouseUp={(e) => { e.stopPropagation(); e.preventDefault(); }}
+            // Removed explicit onMouseUp stopPropagation
             className="nodrag"
             title="Rotate"
             style={{

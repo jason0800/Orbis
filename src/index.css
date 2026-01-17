@@ -3,28 +3,28 @@
     line-height: 1.5;
     font-weight: 400;
 
-    color-scheme: light dark;
-    color: rgba(255, 255, 255, 0.87);
-    background-color: #242424;
+    color-scheme: light;
+    color: #213547;
+    background-color: #ffffff;
 
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 
-    /* Theme Variables */
-    --bg-color: #121212;
-    --bg-secondary: #1e1e1e;
-    --text-primary: #ffffff;
-    --text-secondary: #a0a0a0;
+    /* Theme Variables (Default Light) */
+    --bg-color: #ffffff;
+    --bg-secondary: #f9f9f9;
+    --text-primary: #1a1a1a;
+    --text-secondary: #666666;
     --accent-color: #646cff;
     --accent-hover: #535bf2;
-    --border-color: #333333;
+    --border-color: #e0e0e0;
 
-    --node-bg: #2a2a2a;
-    --node-border: #333333;
-    --node-text: #ffffff;
-    --shape-stroke: #ffffff;
+    --node-bg: #ffffff;
+    --node-border: #e0e0e0;
+    --node-text: #1a1a1a;
+    --shape-stroke: #1a1a1a;
 
     --sidebar-width: 280px;
     --toolbar-height: 50px;
