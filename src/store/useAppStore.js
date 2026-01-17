@@ -209,6 +209,13 @@ const useAppStore = create((set, get) => ({
         }));
     },
 
+    deleteEdge: (id) => {
+        get().pushToHistory();
+        set((state) => ({
+            edges: state.edges.filter((e) => e.id !== id)
+        }));
+    },
+
     addTextNode: (position) => {
         get().pushToHistory();
         const { defaultProperties } = get();
@@ -283,11 +290,20 @@ const useAppStore = create((set, get) => ({
         const { nodes, edges } = get();
         const selectedIds = new Set(nodes.filter(n => n.selected).map(n => n.id));
 
-        if (selectedIds.size === 0) return;
+        if (selectedIds.size === 0 && (!edges.some(e => e.selected))) return; // Also check edges
 
         get().pushToHistory();
+
+        // Filter nodes
         const newNodes = nodes.filter(node => !selectedIds.has(node.id));
-        const newEdges = edges.filter(edge => !selectedIds.has(edge.source) && !selectedIds.has(edge.target));
+
+        // Filter edges: Delete if source/target is deleted OR if edge itself is selected
+        const newEdges = edges.filter(edge => {
+            const sourceDeleted = selectedIds.has(edge.source);
+            const targetDeleted = selectedIds.has(edge.target);
+            const edgeSelected = edge.selected;
+            return !sourceDeleted && !targetDeleted && !edgeSelected;
+        });
 
         set({ nodes: newNodes, edges: newEdges });
     }

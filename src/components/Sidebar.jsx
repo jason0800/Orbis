@@ -231,87 +231,120 @@ const Sidebar = () => {
                                     }}
                                 />
                             ))}
+
+                            {/* Fill Hex Input Group */}
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                background: 'var(--bg-secondary)',
+                                borderRadius: '4px',
+                                padding: '2px 6px',
+                                border: '1px solid var(--border-color)',
+                                flex: 1,
+                                height: '24px' // Match button height approx
+                            }}>
+                                <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)', marginRight: '4px', userSelect: 'none' }}>#</span>
+                                <input
+                                    value={(fill === 'transparent' ? '' : (fill || '')).replace('#', '')}
+                                    onChange={(e) => updateProp('fill', '#' + e.target.value)}
+                                    placeholder="None"
+                                    style={{
+                                        width: '100%',
+                                        fontSize: '0.85em',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        color: 'var(--text-primary)',
+                                        outline: 'none',
+                                        fontFamily: 'monospace'
+                                    }}
+                                    maxLength={6}
+                                />
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {/* Width */}
-                {!isText && (
-                    <div style={controlGroupStyle}>
-                        <label style={labelStyle}>Stroke Width</label>
-                        <div style={{ display: 'flex', gap: '6px', marginTop: '4px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '6px' }}>
-                            {[2, 4, 8].map(w => (
-                                <button
-                                    key={w}
-                                    onClick={() => updateProp('strokeWidth', w)}
-                                    title={`${w}px`}
-                                    style={{
-                                        flex: 1,
-                                        height: '28px',
-                                        background: (strokeWidth === w) ? 'rgba(100, 108, 255, 0.2)' : 'rgba(0,0,0,0.05)', // Accent vs Grey
-                                        border: (strokeWidth === w) ? '1px solid var(--accent-color)' : '1px solid transparent',
-                                        color: (strokeWidth === w) ? 'var(--accent-color)' : 'var(--text-primary)',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        boxShadow: 'none',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}
-                                >
-                                    <div style={{
-                                        height: Math.min(6, Math.max(2, w / 1.5)),
-                                        width: '60%',
-                                        background: 'var(--text-primary)',
-                                        borderRadius: '2px'
-                                    }}></div>
-                                </button>
-                            ))}
+                {
+                    !isText && (
+                        <div style={controlGroupStyle}>
+                            <label style={labelStyle}>Stroke Width</label>
+                            <div style={{ display: 'flex', gap: '6px', marginTop: '4px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '6px' }}>
+                                {[1, 2, 3].map(w => (
+                                    <button
+                                        key={w}
+                                        onClick={() => updateProp('strokeWidth', w)}
+                                        title={`${w}px`}
+                                        style={{
+                                            flex: 1,
+                                            height: '28px',
+                                            background: (strokeWidth === w) ? 'rgba(100, 108, 255, 0.2)' : 'rgba(0,0,0,0.05)', // Accent vs Grey
+                                            border: (strokeWidth === w) ? '1px solid var(--accent-color)' : '1px solid transparent',
+                                            color: (strokeWidth === w) ? 'var(--accent-color)' : 'var(--text-primary)',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            boxShadow: 'none',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}
+                                    >
+                                        <div style={{
+                                            height: Math.min(6, Math.max(2, w / 1.5)),
+                                            width: '60%',
+                                            background: 'var(--text-primary)',
+                                            borderRadius: '2px'
+                                        }}></div>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
                 {/* Style (Solid/Dashed/Dotted) */}
-                {!isText && (
-                    <div style={controlGroupStyle}>
-                        <label style={labelStyle}>Stroke Style</label>
-                        <div style={{ display: 'flex', gap: '6px', marginTop: '4px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '6px' }}>
-                            {['solid', 'dashed', 'dotted'].map(s => (
-                                <button
-                                    key={s}
-                                    onClick={() => updateProp('strokeStyle', s)}
-                                    title={s}
-                                    style={{
-                                        flex: 1,
-                                        height: '28px',
-                                        background: (strokeStyle === s) ? 'rgba(100, 108, 255, 0.2)' : 'rgba(0,0,0,0.05)', // Accent vs Grey
-                                        border: (strokeStyle === s) ? '1px solid var(--accent-color)' : '1px solid transparent',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        boxShadow: 'none',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}
-                                >
-                                    <svg width="100%" height="4" style={{ overflow: 'visible' }}>
-                                        <line
-                                            x1="0" y1="2" x2="100%" y2="2"
-                                            stroke={strokeStyle === s ? 'var(--accent-color)' : 'var(--text-primary)'}
-                                            strokeWidth="2"
-                                            strokeDasharray={
-                                                s === 'solid' ? 'none' :
-                                                    s === 'dashed' ? '4,3' :
-                                                        '1,3' // Dotted: small dot, gap
-                                            }
-                                            strokeLinecap={s === 'dotted' ? 'round' : 'butt'}
-                                        />
-                                    </svg>
-                                </button>
-                            ))}
+                {
+                    !isText && (
+                        <div style={controlGroupStyle}>
+                            <label style={labelStyle}>Stroke Style</label>
+                            <div style={{ display: 'flex', gap: '6px', marginTop: '4px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '6px' }}>
+                                {['solid', 'dashed', 'dotted'].map(s => (
+                                    <button
+                                        key={s}
+                                        onClick={() => updateProp('strokeStyle', s)}
+                                        title={s}
+                                        style={{
+                                            flex: 1,
+                                            height: '28px',
+                                            background: (strokeStyle === s) ? 'rgba(100, 108, 255, 0.2)' : 'rgba(0,0,0,0.05)', // Accent vs Grey
+                                            border: (strokeStyle === s) ? '1px solid var(--accent-color)' : '1px solid transparent',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            boxShadow: 'none',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}
+                                    >
+                                        <svg width="100%" height="4" style={{ overflow: 'visible' }}>
+                                            <line
+                                                x1="0" y1="2" x2="100%" y2="2"
+                                                stroke={strokeStyle === s ? 'var(--accent-color)' : 'var(--text-primary)'}
+                                                strokeWidth="2"
+                                                strokeDasharray={
+                                                    s === 'solid' ? 'none' :
+                                                        s === 'dashed' ? '4,3' :
+                                                            '1,3' // Dotted: small dot, gap
+                                                }
+                                                strokeLinecap={s === 'dotted' ? 'round' : 'butt'}
+                                            />
+                                        </svg>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
                 {/* Opacity */}
                 <div style={controlGroupStyle}>
@@ -335,15 +368,17 @@ const Sidebar = () => {
                     />
                 </div>
 
-                {selectedNode && (
-                    <button style={{ ...listButtonStyle, justifyContent: 'center', marginTop: '8px' }} onClick={() => {
-                        copySelectedNodes();
-                        showNotification('Copied node');
-                    }}>
-                        <Copy size={16} /> Copy
-                    </button>
-                )}
-            </div>
+                {
+                    selectedNode && (
+                        <button style={{ ...listButtonStyle, justifyContent: 'center', marginTop: '8px' }} onClick={() => {
+                            copySelectedNodes();
+                            showNotification('Copied node');
+                        }}>
+                            <Copy size={16} /> Copy
+                        </button>
+                    )
+                }
+            </div >
         );
     };
 

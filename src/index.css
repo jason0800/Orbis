@@ -130,6 +130,12 @@ button:focus-visible {
     transition: opacity 0.1s;
 }
 
+/* Node (Folder) Tool: Force + Cursor */
+.tool-node .react-flow__pane,
+.tool-node .react-flow__node {
+    cursor: crosshair !important;
+}
+
 /* Select Tool: Force Move cursor when hovering over nodes */
 .tool-select .react-flow__node:hover {
     cursor: move !important;

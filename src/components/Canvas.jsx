@@ -82,12 +82,25 @@ export default function Canvas() {
         }
     }, [activeTool, addFolderNode, addTextNode, screenToFlowPosition, setActiveTool, isDrawing, isInteracting, drawingState]);
 
-    // Used for selecting eraser target eraser
     const onNodeClick = useCallback((e, node) => {
         if (activeTool === 'eraser') {
             deleteNode(node.id);
         }
     }, [activeTool, deleteNode]);
+
+    // Explicitly handle edge clicks for eraser
+    const onEdgeClick = useCallback((e, edge) => {
+        if (activeTool === 'eraser') {
+            // We can reuse deleteNode logic if we pass the edge id, 
+            // BUT deleteNode expects a NODE id usually. 
+            // We need a way to delete an edge.
+            // Let's modify deleteNode to handle generic IDs or use deleteSelectedElements logic?
+            // Or better, let's add a specific 'deleteElement' or just call deleteNode if it works?
+            // Check store: deleteNode filters nodes AND edges connected to it. It doesn't delete edge by ID.
+            // We need a 'deleteEdge' action.
+            useAppStore.getState().deleteEdge(edge.id);
+        }
+    }, [activeTool]);
 
     // --- Interaction Handlers ---
 
@@ -240,6 +253,7 @@ export default function Canvas() {
                 fitView
                 onPaneClick={onPaneClick}
                 onNodeClick={onNodeClick}
+                onEdgeClick={onEdgeClick}
                 colorMode={theme}
                 selectionOnDrag={activeTool === 'select'}
                 panOnScroll={true}

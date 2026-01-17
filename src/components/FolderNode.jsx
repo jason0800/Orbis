@@ -14,14 +14,18 @@ const FolderNode = ({ data, selected, id }) => {
         setIsEditing(true);
     };
 
-    const handleBlur = () => {
+    const handleBlur = (e) => {
+        // Prevent closing if we are just switching focus to another element inside this node
+        if (wrapperRef.current && wrapperRef.current.contains(e.relatedTarget)) {
+            return;
+        }
         setIsEditing(false);
         updateNodeData(id, { name, description });
     };
 
     useEffect(() => {
         if (isEditing) {
-            // focus first input
+            // focus logic is handled by autoFocus on inputs
         }
     }, [isEditing]);
 
@@ -41,7 +45,8 @@ const FolderNode = ({ data, selected, id }) => {
                 boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                 display: 'flex',
                 flexDirection: 'column',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                overflow: 'hidden' // Ensure nothing spills out
             }}
         >
             <NodeResizer
@@ -53,116 +58,93 @@ const FolderNode = ({ data, selected, id }) => {
 
             <Handle type="target" position={Position.Top} style={{ background: '#555' }} />
 
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                    <Folder size={20} color="#646cff" style={{ marginRight: '8px' }} />
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: (isEditing || data.description) ? '4px' : '0', justifyContent: 'space-between', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                    <Folder size={20} color="#646cff" style={{ marginRight: '8px', flexShrink: 0 }} />
                     {isEditing ? (
                         <input
                             className="nodrag"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
+                            onBlur={handleBlur}
                             autoFocus
                             placeholder="Folder Name"
                             style={{
                                 background: 'transparent',
                                 border: 'none',
-                                borderBottom: '1px solid var(--accent-color)', // Subtle indicator of focus
                                 color: 'var(--node-text)',
                                 padding: '0',
                                 width: '100%',
                                 fontWeight: 'bold',
-                                fontSize: 'inherit', // Inherit from parent
+                                fontSize: 'inherit',
                                 fontFamily: 'inherit',
                                 outline: 'none'
                             }}
                         />
                     ) : (
-                        <div style={{ fontWeight: 'bold' }}>{data.name}</div>
+                        <div style={{
+                            fontWeight: 'bold',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            flex: 1
+                        }} title={data.name}>
+                            {data.name}
+                        </div>
                     )}
                 </div>
 
-                {/* Edit Button (visible on hover or select could be better, but always visible is safer for discovery) */}
-                {!isEditing && (selected || data.hovered) && (
-                    <button
-                        onClick={() => setIsEditing(true)}
-                        className="nodrag"
-                        title="Edit Node"
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'var(--text-secondary)',
-                            cursor: 'pointer',
-                            padding: '2px'
-                        }}
-                    >
-                        <Pencil size={14} />
-                    </button>
-                )}
             </div>
 
-            {isEditing ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <textarea
-                        className="nodrag"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Add a description..."
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            borderTop: '1px solid var(--node-border)', // Match the non-edit separator
-                            color: 'var(--node-text)',
-                            padding: '4px 0',
-                            width: '100%',
-                            height: '100%',
-                            flex: 1,
-                            fontSize: '0.85em',
-                            resize: 'none',
-                            fontFamily: 'inherit',
-                            outline: 'none',
-                            opacity: 0.8
-                        }}
-                    />
-                    <button
-                        onClick={handleBlur}
-                        className="nodrag"
-                        style={{
-                            alignSelf: 'flex-end',
-                            background: 'var(--accent-color)', // Use theme variable
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            padding: '4px 8px',
-                            cursor: 'pointer',
-                            fontSize: '0.75em',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            opacity: 0.9,
-                            fontWeight: 'bold',
-                            marginTop: '2px'
-                        }}
-                    >
-                        <Check size={12} /> Done
-                    </button>
-                </div>
-            ) : (
-                data.description && (
-                    <div style={{
-                        fontSize: '0.85em',
-                        color: '#aaa',
-                        borderTop: '1px solid #444',
-                        marginTop: '4px',
-                        paddingTop: '4px',
-                        whiteSpace: 'pre-wrap'
-                    }}>
-                        {data.description}
+            {/* Edit Button Removed */}
+
+
+            {
+                isEditing ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, overflow: 'hidden' }}>
+                        <textarea
+                            className="nodrag"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            onBlur={handleBlur}
+                            placeholder="Add a description..."
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                borderTop: 'none', // Removed separate border
+                                color: 'var(--node-text)',
+                                padding: '4px 0',
+                                width: '100%',
+                                height: '100%',
+                                flex: 1,
+                                fontSize: '0.85em',
+                                resize: 'none',
+                                fontFamily: 'inherit',
+                                outline: 'none',
+                                opacity: 0.8
+                            }}
+                        />
                     </div>
+                ) : (
+                    data.description && (
+                        <div style={{
+                            fontSize: '0.85em',
+                            color: 'var(--text-secondary)',
+                            borderTop: 'none', // Removed separator
+                            marginTop: '4px',
+                            paddingTop: '0',
+                            whiteSpace: 'pre-wrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                        }}>
+                            {data.description}
+                        </div>
+                    )
                 )
-            )}
+            }
 
             <Handle type="source" position={Position.Bottom} style={{ background: '#555' }} />
-        </div>
+        </div >
     );
 };
 

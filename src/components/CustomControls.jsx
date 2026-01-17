@@ -82,7 +82,7 @@ const CustomControls = () => {
                 <ZoomIn size={16} />
             </ControlButton>
 
-            <ControlButton onClick={() => fitView()} title="Fit View">
+            <ControlButton onClick={() => fitView({ padding: 0.2, duration: 800 })} title="Fit View">
                 <Maximize size={16} />
             </ControlButton>
         </div>
