@@ -41,8 +41,8 @@ const ShapeNode = ({ data, selected, id }) => {
 
     const getStrokeDasharray = (style) => {
         switch (style) {
-            case 'dashed': return '5,5';
-            case 'dotted': return '1,1';
+            case 'dashed': return '10, 5';
+            case 'dotted': return '1, 8'; // Sparse dots with round caps
             default: return 'none';
         }
     };
@@ -53,6 +53,7 @@ const ShapeNode = ({ data, selected, id }) => {
         fill: fill,
         fillOpacity: fill === 'transparent' ? 0 : 1,
         strokeDasharray: getStrokeDasharray(strokeStyle),
+        strokeLinecap: 'round', // Essential for 'dotted' to look like dots (with length 1)
         opacity: opacity,
         vectorEffect: "non-scaling-stroke",
     };

@@ -3,6 +3,7 @@ import Canvas from './components/Canvas';
 import TopToolbar from './components/TopToolbar';
 import Sidebar from './components/Sidebar';
 import useAppStore from './store/useAppStore';
+import { ReactFlowProvider } from '@xyflow/react';
 
 function App() {
     const { theme } = useAppStore();
@@ -40,11 +41,13 @@ function App() {
     }, [theme]);
 
     return (
-        <div className="app-container" style={{ width: '100%', height: '100%' }}>
-            <Canvas />
-            <TopToolbar />
-            <Sidebar />
-        </div>
+        <ReactFlowProvider>
+            <div className="app-container" style={{ width: '100%', height: '100%' }}>
+                <Canvas />
+                <TopToolbar />
+                <Sidebar />
+            </div>
+        </ReactFlowProvider>
     );
 }
 

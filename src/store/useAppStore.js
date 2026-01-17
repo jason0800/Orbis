@@ -13,10 +13,112 @@ const useAppStore = create((set, get) => ({
     sidebarCollapsed: false,
     selectedNodes: [],
     theme: 'light',
-    gridMode: 'dots',
-    isInteracting: false, // New state to track drag/rotate interactions
+    gridMode: 'none', // Default changed from 'dots' to 'none'
+    isInteracting: false,
 
-    // --- Actions ---
+    // --- Interaction State ---
+    clipboard: null, // For Copy/Paste
+    history: { past: [], future: [] }, // For Undo/Redo
+    defaultProperties: {
+        stroke: '#000000',
+        fill: 'transparent',
+        strokeWidth: 2,
+        strokeStyle: 'solid',
+        opacity: 1
+    },
+
+    // --- History Actions ---
+    pushToHistory: () => {
+        const { nodes, edges, history } = get();
+        // Limit history size to 50
+        const newPast = [...history.past, { nodes, edges }].slice(-50);
+        set({ history: { past: newPast, future: [] } });
+    },
+
+    undo: () => {
+        const { history, nodes, edges } = get();
+        if (history.past.length === 0) return;
+
+        const previous = history.past[history.past.length - 1];
+        const newPast = history.past.slice(0, -1);
+
+        set({
+            nodes: previous.nodes,
+            edges: previous.edges,
+            history: {
+                past: newPast,
+                future: [{ nodes, edges }, ...history.future]
+            }
+        });
+    },
+
+    redo: () => {
+        const { history, nodes, edges } = get();
+        if (history.future.length === 0) return;
+
+        const next = history.future[0];
+        const newFuture = history.future.slice(1);
+
+        set({
+            nodes: next.nodes,
+            edges: next.edges,
+            history: {
+                past: [...history.past, { nodes, edges }],
+                future: newFuture
+            }
+        });
+    },
+
+    // --- Property Actions ---
+    setDefaultProperties: (props) => {
+        set((state) => ({
+            defaultProperties: { ...state.defaultProperties, ...props }
+        }));
+    },
+
+    // --- Clipboard Actions ---
+    copySelectedNodes: () => {
+        const { nodes, selectedNodes } = get();
+        // Get full node objects for selected IDs
+        const selectedIds = new Set(selectedNodes); // selectedNodes is array of IDs? Or we rely on node.selected property? 
+        // "selectedNodes" state might just be IDs from onSelectionChange or we trust internal state?
+        // ReactFlow manages selection. We sync it sometimes.
+        // Let's filter nodes by .selected property which is more reliable if synced.
+        const nodesToCopy = nodes.filter(n => n.selected);
+        if (nodesToCopy.length > 0) {
+            set({ clipboard: nodesToCopy });
+            console.log('Copied nodes:', nodesToCopy.length);
+        }
+    },
+
+    pasteNodes: () => {
+        const { clipboard, nodes } = get();
+        if (!clipboard || clipboard.length === 0) return;
+
+        get().pushToHistory(); // Save state before paste
+
+        const newNodes = clipboard.map(node => {
+            const id = uuidv4();
+            return {
+                ...node,
+                id: id,
+                selected: true, // Select new nodes
+                position: {
+                    x: node.position.x + 20, // Offset
+                    y: node.position.y + 20
+                },
+                // If we want to reset some data?
+                data: { ...node.data }
+            };
+        });
+
+        // Deselect current nodes
+        const updatedCurrentNodes = nodes.map(n => ({ ...n, selected: false }));
+
+        set({ nodes: [...updatedCurrentNodes, ...newNodes] });
+    },
+
+    // --- Standard Actions ---
     onNodesChange: (changes) => {
         set({
             nodes: applyNodeChanges(changes, get().nodes),
@@ -30,16 +132,18 @@ const useAppStore = create((set, get) => ({
     },
 
     onConnect: (connection) => {
+        get().pushToHistory();
         set({
             edges: addEdge(connection, get().edges),
         });
     },
 
     addFolderNode: (position, parentId = null) => {
+        get().pushToHistory();
         const newNode = {
             id: uuidv4(),
             type: 'folderNode',
-            position,
+            position: { x: position.x - 75, y: position.y - 20 }, // Centered (approx 150x40 default)
             data: {
                 name: 'New Folder',
                 description: '',
@@ -58,14 +162,20 @@ const useAppStore = create((set, get) => ({
     },
 
     addShapeNode: (type, position) => {
-        const initialRotation = type === 'diamond' ? 45 : 0;
+        if (type === 'diamond') return; // Removed Diamond
+        get().pushToHistory();
+
+        const { defaultProperties } = get();
+        const initialRotation = 0;
+
         const newNode = {
             id: uuidv4(),
             type: 'shapeNode',
             position,
             data: {
                 shapeType: type,
-                rotation: initialRotation
+                rotation: initialRotation,
+                ...defaultProperties // Apply defaults
             },
             style: { width: 100, height: 100 },
         };
@@ -73,17 +183,26 @@ const useAppStore = create((set, get) => ({
     },
 
     addFreehandNode: (position, points, size = { width: 100, height: 100 }) => {
+        get().pushToHistory();
+        const { defaultProperties } = get();
+
         const newNode = {
             id: uuidv4(),
             type: 'freehandNode',
             position,
-            data: { points, width: size.width, height: size.height },
+            data: {
+                points,
+                width: size.width,
+                height: size.height,
+                ...defaultProperties // Apply defaults (color, width, etc.)
+            },
             style: { width: size.width, height: size.height },
         };
         set((state) => ({ nodes: [...state.nodes, newNode] }));
     },
 
     deleteNode: (id) => {
+        get().pushToHistory();
         set((state) => ({
             nodes: state.nodes.filter((n) => n.id !== id),
             edges: state.edges.filter((e) => e.source !== id && e.target !== id)
@@ -91,16 +210,37 @@ const useAppStore = create((set, get) => ({
     },
 
     addTextNode: (position) => {
+        get().pushToHistory();
+        const { defaultProperties } = get();
+
         const newNode = {
             id: uuidv4(),
             type: 'textNode',
-            position,
-            data: { text: 'Text' },
+            position: { x: position.x - 100, y: position.y - 25 }, // Centered (200x50 default)
+            style: { width: 200, height: 50 }, // Fix: Set initial dimensions
+            data: {
+                text: 'Text',
+                stroke: defaultProperties.stroke, // Apply color
+            },
         };
         set((state) => ({ nodes: [...state.nodes, newNode] }));
     },
 
     updateNodeData: (id, data) => {
+        // Debounce history? Or push on start?
+        // Ideally we assume this is called atomically or we manage it carefully.
+        // For properties panel, maybe push history on 'focus' or manually?
+        // For now, let's NOT push history on every keystroke. 
+        // User might need to rely on 'blur' or explicit save.
+        // BUT, for simple property toggles (color), we SHOULD push history.
+        // Let's assume the caller handles history if it's a complex drag, 
+        // but for simple data updates we might want to push.
+        // To avoid spam, let's rely on the caller or just push.
+        // For safely, let's push. If it's too much, we can optimize.
+
+        // Optimisation: Don't push if value hasn't changed? Hard to know.
+        // NOTE: ReactFlow handles dragging updates via onNodesChange. Use 'isInteracting' to suspend history?
+
         set((state) => ({
             nodes: state.nodes.map((node) =>
                 node.id === id ? { ...node, data: { ...node.data, ...data } } : node
@@ -109,6 +249,7 @@ const useAppStore = create((set, get) => ({
     },
 
     updateNode: (id, fields) => {
+        // Similar to above.
         set((state) => ({
             nodes: state.nodes.map((node) =>
                 node.id === id ? { ...node, ...fields } : node
@@ -130,21 +271,21 @@ const useAppStore = create((set, get) => ({
         nodes: state.nodes || [],
         edges: state.edges || [],
         theme: state.theme || 'light',
-        gridMode: state.gridMode || 'dots',
+        gridMode: state.gridMode || 'none', // Default none on load if missing
     }),
 
-    resetCanvas: () => set({ nodes: [], edges: [] }),
+    resetCanvas: () => {
+        get().pushToHistory();
+        set({ nodes: [], edges: [] });
+    },
 
     deleteSelectedElements: () => {
-        const { nodes, edges, selectedNodes } = get();
-        // Create a set for O(1) lookups
+        const { nodes, edges } = get();
         const selectedIds = new Set(nodes.filter(n => n.selected).map(n => n.id));
-
-        // Also add edges that are selected? ReactFlow handles edge selection separately usually,
-        // but for now we focus on nodes.
 
         if (selectedIds.size === 0) return;
 
+        get().pushToHistory();
         const newNodes = nodes.filter(node => !selectedIds.has(node.id));
         const newEdges = edges.filter(edge => !selectedIds.has(edge.source) && !selectedIds.has(edge.target));
 

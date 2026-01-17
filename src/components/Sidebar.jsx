@@ -1,11 +1,30 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import useAppStore from '../store/useAppStore';
+import { useReactFlow } from '@xyflow/react';
 import {
-    Menu, X, Save, FolderOpen, Download,
-    Search, Grid, Sun, Moon, Trash2,
-    Palette, Layers, Type, Minus, ArrowRight
+    Save, FolderOpen, Download,
+    Sun, Moon, Trash2,
+    Copy, Search
 } from 'lucide-react';
 import { exportToOrbisFile, importOrbisFile, exportToZip } from '../utils/persistence';
+
+// --- Constants ---
+// --- Constants ---
+// --- Constants ---
+const STROKE_COLORS = [
+    '#000000', // Black
+    '#FF9AA2', // Pastel Red
+    '#74b9ff', // Pastel Blue
+    '#55efc4', // Pastel Green
+    '#ffeaa7', // Pastel Yellow
+];
+
+const FILL_COLORS = [
+    '#FF9AA2', // Pastel Red
+    '#74b9ff', // Pastel Blue
+    '#55efc4', // Pastel Green
+    '#ffeaa7', // Pastel Yellow
+];
 
 const Sidebar = () => {
     const {
@@ -14,25 +33,40 @@ const Sidebar = () => {
         resetCanvas,
         nodes,
         loadState,
-        updateNodeData,
-        updateNode
+        updateNode,
+        activeTool,
+        defaultProperties,
+        setDefaultProperties,
+        copySelectedNodes
     } = useAppStore();
 
+    const { fitView } = useReactFlow();
     const fileInputRef = useRef(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [notification, setNotification] = useState(null); // For toast
+    // Ref for hidden color input removed
 
-    // Find selected node
-    const selectedNode = useMemo(() => {
-        return nodes.find(n => n.selected);
-    }, [nodes]);
+    // --- Selection Logic ---
+    const selectedNode = useMemo(() => nodes.find(n => n.selected), [nodes]);
+
+    // Check if we should show Tool Defaults instead of Node Properties
+    // We show properties if a node is selected OR if a drawing tool is active (and no node selected)
+    const isDrawingTool = ['rectangle', 'circle', 'diamond', 'line', 'arrow', 'freehand', 'text'].includes(activeTool);
+    const showProperties = selectedNode || isDrawingTool;
+    const isToolDefaults = !selectedNode && isDrawingTool;
+
+    // --- Handlers ---
+    const showNotification = (msg) => {
+        setNotification(msg);
+        setTimeout(() => setNotification(null), 2000);
+    };
 
     const handleSave = () => {
         const state = useAppStore.getState();
         exportToOrbisFile(state);
     };
 
-    const handleOpen = () => {
-        fileInputRef.current?.click();
-    };
+    const handleOpen = () => fileInputRef.current?.click();
 
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
@@ -43,7 +77,7 @@ const Sidebar = () => {
         } catch (err) {
             alert('Failed to load file: ' + err.message);
         }
-        e.target.value = null; // reset
+        e.target.value = null;
     };
 
     const handleExport = () => {
@@ -53,162 +87,266 @@ const Sidebar = () => {
 
     const handleThemeToggle = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
-    // -- Property Handlers --
-    const updateProp = (key, value) => {
-        if (!selectedNode) return;
-        updateNode(selectedNode.id, {
-            data: { ...selectedNode.data, [key]: value }
-        });
+    const handleReset = () => {
+        if (confirm('Are you sure you want to reset the canvas?')) {
+            resetCanvas();
+            showNotification('Canvas Reset');
+        }
     };
 
-    // Properties UI
+    // --- Property Updates ---
+    const currentData = selectedNode ? selectedNode.data : defaultProperties;
+
+    const updateProp = (key, value) => {
+        if (selectedNode) {
+            updateNode(selectedNode.id, {
+                data: { ...selectedNode.data, [key]: value }
+            });
+        } else {
+            setDefaultProperties({ [key]: value });
+        }
+    };
+
+    // --- Search Logic ---
+    const filteredNodes = useMemo(() => {
+        if (!searchQuery.trim()) return [];
+        const lower = searchQuery.toLowerCase();
+        return nodes.filter(n => {
+            const name = n.data?.name || '';
+            const text = n.data?.text || '';
+            const label = n.data?.label || '';
+            return name.toLowerCase().includes(lower) ||
+                text.toLowerCase().includes(lower) ||
+                label.toLowerCase().includes(lower);
+        });
+    }, [nodes, searchQuery]);
+
+    const handleSearchResultClick = (nodeId) => {
+        // Zoom to node
+        fitView({ nodes: [{ id: nodeId }], padding: 1, duration: 800 });
+        // Select it?
+        useAppStore.getState().setSelectedNodes([nodeId]);
+    };
+
+
+    // --- Renderers ---
+
     const renderProperties = () => {
-        if (!selectedNode) return null;
+        const { stroke, fill, strokeWidth, strokeStyle, opacity, shapeType } = currentData;
 
-        const { stroke, fill, strokeWidth, strokeStyle, opacity, shapeType } = selectedNode.data;
-
-        // Determine if Fill is supported
-        // ShapeNode has shapeType. FreehandNode is type='freehandNode'.
-        const isLine = shapeType === 'line' || shapeType === 'arrow';
-        const isFreehand = selectedNode.type === 'freehandNode';
-        const supportsFill = !isLine && !isFreehand;
+        // Shape support check
+        const type = selectedNode ? shapeType : (activeTool === 'freehand' ? 'freehand' : activeTool);
+        const isLine = type === 'line' || type === 'arrow';
+        const isFreehand = selectedNode ? selectedNode.type === 'freehandNode' : activeTool === 'freehand';
+        const isText = selectedNode ? selectedNode.type === 'textNode' : activeTool === 'text';
+        const supportsFill = !isLine && !isFreehand && !isText;
 
         return (
-            <div style={{ marginTop: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
-                <div style={sectionHeaderStyle}>Appearance</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '2px' }}>
+                <div style={sectionHeaderStyle}>
+                    {selectedNode ? 'Properties' : 'Tool Defaults'}
+                </div>
 
-                {/* Stroke Section */}
+                {/* Color (Stroke) */}
                 <div style={controlGroupStyle}>
-                    <div style={rowStyle}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div title="Stroke" style={{ color: 'var(--text-secondary)' }}><Palette size={14} /></div>
+                    <label style={labelStyle}>Stroke</label>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                        {STROKE_COLORS.map(c => (
+                            <button
+                                key={c}
+                                onClick={() => updateProp('stroke', c)}
+                                style={{
+                                    width: '20px', height: '20px',
+                                    borderRadius: '3px',
+                                    background: c,
+                                    border: stroke === c ? '2px solid var(--accent-color)' : '1px solid rgba(0,0,0,0.2)',
+                                    cursor: 'pointer',
+                                    padding: 0
+                                }}
+                                title={c}
+                            />
+                        ))}
+
+                        {/* Hex Input Group */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            background: 'var(--bg-secondary)',
+                            borderRadius: '4px',
+                            padding: '2px 6px',
+                            border: '1px solid var(--border-color)',
+                            flex: 1,
+                            marginLeft: '4px'
+                        }}>
+                            <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)', marginRight: '4px', userSelect: 'none' }}>#</span>
                             <input
-                                type="color"
-                                value={stroke || '#000000'}
-                                onChange={(e) => updateProp('stroke', e.target.value)}
-                                style={colorInputStyle}
+                                value={(stroke || '').replace('#', '')}
+                                onChange={(e) => updateProp('stroke', '#' + e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    fontSize: '0.85em',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: 'var(--text-primary)',
+                                    outline: 'none',
+                                    fontFamily: 'monospace'
+                                }}
+                                maxLength={6}
                             />
                         </div>
-                        {/* Opacity for Stroke? Or global opacity?
-                            User asked for Opacity property. Usually global opacity.
-                            Let's put global opacity separate.
-                        */}
-                        <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
-                            {(stroke || '#000').toUpperCase()}
-                        </span>
                     </div>
+                </div>
 
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                        {/* Width */}
-                        <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-                            <Minus size={14} style={{ color: 'var(--text-secondary)' }} />
+                {/* Fill Color */}
+                {supportsFill && (
+                    <div style={controlGroupStyle}>
+                        <label style={labelStyle}>Fill</label>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                            {/* Transparent Option */}
+                            <button
+                                onClick={() => updateProp('fill', 'transparent')}
+                                style={{
+                                    width: '20px', height: '20px',
+                                    borderRadius: '3px',
+                                    background: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'><path d='M0 0h4v4H0zm4 4h4v4H4z' fill='%23e0e0e0'/></svg>")`,
+                                    backgroundColor: '#fff',
+                                    border: fill === 'transparent' ? '2px solid var(--accent-color)' : '1px solid rgba(0,0,0,0.2)',
+                                    cursor: 'pointer',
+                                    padding: 0
+                                }}
+                                title="Transparent"
+                            />
+
+                            {FILL_COLORS.map(c => (
+                                <button
+                                    key={c}
+                                    onClick={() => updateProp('fill', c)}
+                                    style={{
+                                        width: '20px', height: '20px',
+                                        borderRadius: '3px',
+                                        background: c,
+                                        border: fill === c ? '2px solid var(--accent-color)' : '1px solid rgba(0,0,0,0.2)',
+                                        cursor: 'pointer',
+                                        padding: 0
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Width */}
+                {!isText && (
+                    <div style={controlGroupStyle}>
+                        <label style={labelStyle}>Stroke Width</label>
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '4px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '6px' }}>
                             {[2, 4, 8].map(w => (
                                 <button
                                     key={w}
                                     onClick={() => updateProp('strokeWidth', w)}
-                                    title={`Width ${w}px`}
+                                    title={`${w}px`}
                                     style={{
-                                        ...optionBtnStyle,
-                                        background: (strokeWidth === w) ? 'var(--selection-color)' : 'transparent',
-                                        border: (strokeWidth === w) ? '1px solid #646cff' : '1px solid var(--border-color)',
-                                        height: '24px',
-                                        width: '24px'
+                                        flex: 1,
+                                        height: '28px',
+                                        background: (strokeWidth === w) ? 'rgba(100, 108, 255, 0.2)' : 'rgba(0,0,0,0.05)', // Accent vs Grey
+                                        border: (strokeWidth === w) ? '1px solid var(--accent-color)' : '1px solid transparent',
+                                        color: (strokeWidth === w) ? 'var(--accent-color)' : 'var(--text-primary)',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        boxShadow: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
                                     }}
                                 >
-                                    <div style={{ height: Math.min(12, w) + 'px', width: '12px', background: 'var(--text-primary)', borderRadius: '1px' }}></div>
+                                    <div style={{
+                                        height: Math.min(6, Math.max(2, w / 1.5)),
+                                        width: '60%',
+                                        background: 'var(--text-primary)',
+                                        borderRadius: '2px'
+                                    }}></div>
                                 </button>
                             ))}
                         </div>
+                    </div>
+                )}
 
-                        <div style={{ width: '1px', background: 'var(--border-color)', height: '24px' }}></div>
-
-                        {/* Style */}
-                        <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-                            <Type size={14} style={{ color: 'var(--text-secondary)' }} /> {/* Using Type icon as placeholder for Style or generic edit */}
+                {/* Style (Solid/Dashed/Dotted) */}
+                {!isText && (
+                    <div style={controlGroupStyle}>
+                        <label style={labelStyle}>Stroke Style</label>
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '4px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '6px' }}>
                             {['solid', 'dashed', 'dotted'].map(s => (
                                 <button
                                     key={s}
                                     onClick={() => updateProp('strokeStyle', s)}
                                     title={s}
                                     style={{
-                                        ...optionBtnStyle,
-                                        background: (strokeStyle === s) ? 'var(--selection-color)' : 'transparent',
-                                        border: (strokeStyle === s) ? '1px solid #646cff' : '1px solid var(--border-color)',
-                                        height: '24px',
-                                        width: '24px'
+                                        flex: 1,
+                                        height: '28px',
+                                        background: (strokeStyle === s) ? 'rgba(100, 108, 255, 0.2)' : 'rgba(0,0,0,0.05)', // Accent vs Grey
+                                        border: (strokeStyle === s) ? '1px solid var(--accent-color)' : '1px solid transparent',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        boxShadow: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
                                     }}
                                 >
-                                    <div style={{
-                                        width: '14px',
-                                        height: '2px',
-                                        background: 'var(--text-primary)',
-                                        borderStyle: s === 'solid' ? 'solid' : s,
-                                        borderWidth: '0 0 2px 0',
-                                        borderColor: 'var(--text-primary)'
-                                    }}></div>
+                                    <svg width="100%" height="4" style={{ overflow: 'visible' }}>
+                                        <line
+                                            x1="0" y1="2" x2="100%" y2="2"
+                                            stroke={strokeStyle === s ? 'var(--accent-color)' : 'var(--text-primary)'}
+                                            strokeWidth="2"
+                                            strokeDasharray={
+                                                s === 'solid' ? 'none' :
+                                                    s === 'dashed' ? '4,3' :
+                                                        '1,3' // Dotted: small dot, gap
+                                            }
+                                            strokeLinecap={s === 'dotted' ? 'round' : 'butt'}
+                                        />
+                                    </svg>
                                 </button>
                             ))}
                         </div>
                     </div>
-                </div>
-
-                {/* Fill Section (Conditional) */}
-                {supportsFill && (
-                    <div style={{ ...controlGroupStyle, marginTop: '8px' }}>
-                        <div style={rowStyle}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div title="Fill" style={{ color: 'var(--text-secondary)' }}><Layers size={14} /></div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={fill !== 'transparent'}
-                                        onChange={(e) => updateProp('fill', e.target.checked ? '#ff0000' : 'transparent')}
-                                    />
-                                    {fill !== 'transparent' && (
-                                        <input
-                                            type="color"
-                                            value={fill || '#ffffff'}
-                                            onChange={(e) => updateProp('fill', e.target.value)}
-                                            style={colorInputStyle}
-                                        />
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 )}
 
-                {/* Opacity Slider */}
-                <div style={{ ...controlGroupStyle, marginTop: '8px' }}>
-                    <div style={rowStyle}>
+                {/* Opacity */}
+                <div style={controlGroupStyle}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                         <label style={labelStyle}>Opacity</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <input
-                                type="range"
-                                min="0.1"
-                                max="1"
-                                step="0.1"
-                                value={opacity ?? 1}
-                                onChange={(e) => updateProp('opacity', parseFloat(e.target.value))}
-                                style={{ width: '80px', height: '4px' }}
-                            />
-                            <span style={{ fontSize: '0.8em', width: '24px', textAlign: 'right' }}>
-                                {Math.round((opacity ?? 1) * 100)}%
-                            </span>
-                        </div>
+                        <span style={{ fontSize: '0.8em' }}>{Math.round((opacity ?? 1) * 100)}%</span>
                     </div>
+                    <input
+                        type="range"
+                        min="0.1"
+                        max="1"
+                        step="0.05"
+                        value={opacity ?? 1}
+                        onChange={(e) => updateProp('opacity', parseFloat(e.target.value))}
+                        style={{
+                            width: '100%',
+                            height: '4px',
+                            accentColor: 'var(--text-primary)',
+                            cursor: 'pointer'
+                        }}
+                    />
                 </div>
+
+                {selectedNode && (
+                    <button style={{ ...listButtonStyle, justifyContent: 'center', marginTop: '8px' }} onClick={() => {
+                        copySelectedNodes();
+                        showNotification('Copied node');
+                    }}>
+                        <Copy size={16} /> Copy
+                    </button>
+                )}
             </div>
         );
     };
 
-    const controlGroupStyle = {
-        background: 'var(--bg-secondary)',
-        padding: '8px',
-        borderRadius: '6px',
-    };
-
-    // --- Render Logic ---
     const containerStyle = {
         position: 'absolute',
         top: '10px',
@@ -216,83 +354,134 @@ const Sidebar = () => {
         background: 'var(--node-bg)',
         border: '1px solid var(--border-color)',
         borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         zIndex: 1000,
-        padding: '8px',
+        padding: '12px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '8px',
-        maxWidth: '220px',
-        maxHeight: '90vh',
+        gap: '12px',
+        width: '220px', // Reduced width
+        maxHeight: 'calc(100vh - 40px)', // Fit in screen
         overflowY: 'auto'
     };
 
-    // Shared Header
-    const Header = () => (
-        <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                    onClick={handleThemeToggle}
-                    title="Toggle Theme"
-                    style={buttonStyle}
-                >
-                    {theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
-                </button>
+    const notificationStyle = {
+        position: 'absolute',
+        bottom: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        background: 'var(--text-primary)',
+        color: 'var(--bg-color)',
+        padding: '8px 16px',
+        borderRadius: '20px',
+        fontSize: '0.85em',
+        pointerEvents: 'none',
+        opacity: notification ? 1 : 0,
+        transition: 'opacity 0.3s',
+        zIndex: 2000
+    };
 
-                <button
-                    onClick={() => { if (confirm('Clear entire canvas?')) resetCanvas() }}
-                    title="Reset (Clear All)"
-                    style={{ ...buttonStyle, color: '#ff4444' }}
-                >
-                    <Trash2 size={18} />
-                </button>
-            </div>
-            {selectedNode && <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>Properties</div>}
-        </div>
-    );
+    // --- RENDER ---
 
-    // MODE 1: Properties Panel (Selection Active)
-    if (selectedNode) {
-        return (
-            <div style={containerStyle}>
-                <Header />
-                {renderProperties()}
-            </div>
-        );
-    }
-
-    // MODE 2: Default Panel (No Selection)
     return (
-        <div style={containerStyle}>
-            <Header />
+        <>
+            {/* View 1 or 2 */}
+            <div style={containerStyle}>
+                {showProperties ? (
+                    renderProperties()
+                ) : (
+                    <>
+                        {/* File Actions */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <button style={listButtonStyle} onClick={handleSave}>
+                                <Save size={16} /> Save
+                            </button>
+                            <button style={listButtonStyle} onClick={handleOpen}>
+                                <FolderOpen size={16} /> Open
+                            </button>
+                            <button style={listButtonStyle} onClick={handleExport}>
+                                <Download size={16} /> Export ZIP
+                            </button>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                style={{ display: 'none' }}
+                                accept=".orbis"
+                                onChange={handleFileChange}
+                            />
+                        </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <button style={listButtonStyle} onClick={handleSave}>
-                    <Save size={16} /> Save
-                </button>
-                <button style={listButtonStyle} onClick={handleOpen}>
-                    <FolderOpen size={16} /> Open
-                </button>
-                <button style={listButtonStyle} onClick={handleExport}>
-                    <Download size={16} /> Export ZIP
-                </button>
+                        <div style={{ width: '100%', height: '1px', background: 'var(--border-color)' }}></div>
+
+                        {/* Search */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--bg-secondary)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                                <Search size={14} color="var(--text-secondary)" />
+                                <input
+                                    placeholder="Find text..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    style={{ border: 'none', background: 'transparent', width: '100%', fontSize: '0.9em', outline: 'none', color: 'var(--text-primary)' }}
+                                />
+                            </div>
+                            {searchQuery && (
+                                <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '4px' }}>
+                                    {filteredNodes.length === 0 ? (
+                                        <div style={{ padding: '8px', fontSize: '0.8em', color: 'var(--text-secondary)' }}>No results</div>
+                                    ) : (
+                                        filteredNodes.map(n => (
+                                            <div
+                                                key={n.id}
+                                                onClick={() => handleSearchResultClick(n.id)}
+                                                style={{
+                                                    padding: '6px',
+                                                    fontSize: '0.85em',
+                                                    cursor: 'pointer',
+                                                    borderBottom: '1px solid var(--border-color)',
+                                                    background: 'var(--bg-secondary)'
+                                                }}
+                                                className="search-result-item"
+                                            >
+                                                {n.data.name || n.data.text || n.type}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div style={{ width: '100%', height: '1px', background: 'var(--border-color)' }}></div>
+
+                        {/* Bottom Controls (Theme / Reset) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: 'auto' }}>
+                            <button style={listButtonStyle} onClick={handleThemeToggle}>
+                                {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+                                <span>Theme</span>
+                            </button>
+                            <button
+                                style={listButtonStyle}
+                                onClick={handleReset}
+                            >
+                                <Trash2 size={16} /> Reset Canvas
+                            </button>
+                        </div>
+
+                        <div style={{ fontSize: '0.7em', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                            {nodes.length} Items
+                        </div>
+                    </>
+                )}
             </div>
 
-            <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                accept=".orbis"
-                onChange={handleFileChange}
-            />
-
-            <div style={{ fontSize: '0.7em', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '4px' }}>
-                {nodes.length} Items
+            {/* Notification Toast */}
+            <div style={notificationStyle}>
+                {notification}
             </div>
-        </div>
+        </>
     );
 };
 
+// --- Styles ---
 const buttonStyle = {
     background: 'transparent',
     color: 'var(--text-primary)',
@@ -302,55 +491,53 @@ const buttonStyle = {
     borderRadius: '4px',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    fontSize: '0.85em' // Reduced font size
 };
 
 const listButtonStyle = {
     ...buttonStyle,
-    justifyContent: 'flex-start',
+    justifyContent: 'flex-start', // Ensure left alignment
     gap: '8px',
-    fontSize: '0.9em',
     width: '100%',
-    padding: '6px 8px'
-};
-
-const rowStyle = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '6px',
-    fontSize: '0.8em'
+    padding: '6px 8px',
+    border: '1px solid transparent',
+    background: 'var(--bg-secondary)',
+    transition: 'background 0.2s',
+    ':hover': {
+        background: 'rgba(0,0,0,0.05)'
+    }
 };
 
 const labelStyle = {
-    color: 'var(--text-secondary)'
+    fontSize: '0.75em', // Reduced label size
+    color: 'var(--text-secondary)',
+    fontWeight: '500'
 };
 
-const colorInputStyle = {
-    width: '24px',
-    height: '24px',
-    padding: 0,
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    background: 'none'
+const controlGroupStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px'
 };
 
 const optionBtnStyle = {
-    padding: '4px',
+    padding: '4px 8px',
     cursor: 'pointer',
     borderRadius: '4px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: '24px'
+    fontSize: '0.75em', // Reduced option font
+    color: 'var(--text-primary)'
 };
 
 const sectionHeaderStyle = {
-    fontSize: '0.8em',
+    fontSize: '0.85em', // Reduced header size
     fontWeight: 'bold',
-    marginBottom: '8px',
-    color: 'var(--text-primary)'
+    color: 'var(--text-primary)',
+    paddingBottom: '8px',
+    borderBottom: '1px solid var(--border-color)'
 };
 
 export default Sidebar;

@@ -7,7 +7,6 @@ import {
     Type,
     Square,
     Circle,
-    Diamond,
     ArrowRight,
     Minus,
     Image as ImageIcon,
@@ -17,15 +16,15 @@ import {
 const tools = [
     { id: 'select', icon: MousePointer2, label: 'Select (1)', shortcut: '1' },
     { id: 'pan', icon: Hand, label: 'Pan (2)', shortcut: '2' },
-    { id: 'node', icon: FolderPlus, label: 'Add Folder (3)', shortcut: '3' },
+    { id: 'node', icon: React.lazy(() => import('lucide-react').then(mod => ({ default: mod.Plus }))), label: 'Add Folder (3)', shortcut: '3' },
     { divider: true },
     { id: 'text', icon: Type, label: 'Text (4)', shortcut: '4' },
     { id: 'rectangle', icon: Square, label: 'Rectangle (5)', shortcut: '5' },
     { id: 'circle', icon: Circle, label: 'Circle (6)', shortcut: '6' },
 
-    { id: 'arrow', icon: ArrowRight, label: 'Arrow (8)', shortcut: '8' },
-    { id: 'line', icon: Minus, label: 'Line (9)', shortcut: '9' },
-    { id: 'freehand', icon: React.lazy(() => import('lucide-react').then(mod => ({ default: mod.Pencil }))), label: 'Freehand (0)', shortcut: '0' },
+    { id: 'arrow', icon: ArrowRight, label: 'Arrow (7)', shortcut: '7' },
+    { id: 'line', icon: Minus, label: 'Line (8)', shortcut: '8' },
+    { id: 'freehand', icon: React.lazy(() => import('lucide-react').then(mod => ({ default: mod.Pencil }))), label: 'Freehand (9)', shortcut: '9' },
     // { id: 'image', icon: ImageIcon, label: 'Image (I)', shortcut: 'I' }, // Future impl
     { id: 'eraser', icon: Eraser, label: 'Eraser (E)', shortcut: 'E' },
 ];

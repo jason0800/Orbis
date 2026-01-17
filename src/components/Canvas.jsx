@@ -1,14 +1,14 @@
 import React, { useCallback, useRef, useState, useMemo } from 'react';
-import { ReactFlow, Background, Controls, MiniMap, useReactFlow, ReactFlowProvider } from '@xyflow/react';
+import { ReactFlow, Background, MiniMap, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import useAppStore from '../store/useAppStore';
 import FolderNode from './FolderNode';
 import ShapeNode from './ShapeNode';
 import TextNode from './TextNode';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
-
 import FreehandNode from './FreehandNode';
 import { getSmoothPath } from '../utils/drawing';
+import CustomControls from './CustomControls';
 
 const nodeTypes = {
     folderNode: FolderNode,
@@ -17,7 +17,13 @@ const nodeTypes = {
     freehandNode: FreehandNode,
 };
 
-function CanvasContent() {
+// SVG Cursors
+// SVG Cursors
+const ERASER_CURSOR_BLACK = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" /><path d="M22 21H7" /><path d="m5 11 9 9" /></svg>') 0 24, auto`;
+const ERASER_CURSOR_RED = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" /><path d="M22 21H7" /><path d="m5 11 9 9" /></svg>') 0 24, auto`;
+const FOLDER_CURSOR = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>') 12 12, auto`;
+
+export default function Canvas() {
     useKeyboardShortcuts();
 
     const {
@@ -35,10 +41,11 @@ function CanvasContent() {
         theme,
         activeTool,
         setActiveTool,
-        isInteracting
+        isInteracting,
+        defaultProperties
     } = useAppStore();
 
-    const { screenToFlowPosition, flowToScreenPosition, getViewport } = useReactFlow();
+    const { screenToFlowPosition, getViewport } = useReactFlow();
     const wrapperRef = useRef(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [points, setPoints] = useState([]);
@@ -54,14 +61,14 @@ function CanvasContent() {
             case 'pan': return 'grab';
             case 'select': return 'default';
             case 'text': return 'text';
-            case 'eraser': return `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewport="0 0 24 24" fill="none" stroke="black" stroke-width="2"><path d="M18 10l-6-6L2 14l6 6 10-10z" /></svg>') 0 24, auto`;
+            case 'node': return FOLDER_CURSOR;
+            case 'eraser': return ERASER_CURSOR_BLACK;
             default: return 'crosshair'; // For creation tools
         }
     };
 
     const onPaneClick = useCallback((event) => {
         // Prevent click if we were interaction (dragging/resizing)
-        // Note: Drag-to-draw (drawingState) handled by Up, not Click.
         if (isDrawing || isInteracting || drawingState) return;
 
         const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
@@ -86,7 +93,6 @@ function CanvasContent() {
 
     const onMouseDown = (e) => {
         if (isInteracting) return;
-
         const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
 
         // Freehand
@@ -97,7 +103,7 @@ function CanvasContent() {
         }
 
         // Shape Drag-to-Draw
-        if (['rectangle', 'circle', 'diamond', 'line', 'arrow'].includes(activeTool)) {
+        if (['rectangle', 'circle', 'line', 'arrow'].includes(activeTool)) {
             // Create initial node
             useAppStore.getState().addShapeNode(activeTool, pos);
 
@@ -166,6 +172,13 @@ function CanvasContent() {
                 });
             }
         }
+
+        // Eraser Hover Effect Logic
+        if (activeTool === 'eraser') {
+            // We need to detect if we are over a node to switch cursor.
+            // This is handled by CSS mostly, but we want the RED cursor.
+            // See index.css for hover override.
+        }
     };
 
     const onMouseUp = () => {
@@ -232,12 +245,13 @@ function CanvasContent() {
                 panOnScroll={true}
                 zoomOnScroll={true}
                 preventScrolling={false}
-                // Only allow Left Click Pan (0) if we are in 'pan' mode.
-                // Otherwise (select, draw), only allow Middle (1) or Right (2) pan.
+                minZoom={0.1}
                 panOnDrag={activeTool === 'pan' ? [0, 1, 2] : [1, 2]}
             >
-                <Background variant={gridMode === 'none' ? undefined : gridMode} gap={16} />
-                <Controls />
+                {/* Render Background only if not 'none' */}
+                {gridMode !== 'none' && <Background variant={gridMode} gap={16} />}
+
+                <CustomControls />
                 <MiniMap nodeStrokeWidth={3} zoomable pannable />
 
                 {/* Live Drawing Overlay using React Flow Viewport Transform */}
@@ -256,8 +270,8 @@ function CanvasContent() {
                         <svg style={{ width: '100000px', height: '100000px', overflow: 'visible' }}>
                             <path
                                 d={drawingPath}
-                                stroke={theme === 'dark' ? '#fff' : '#000'}
-                                strokeWidth={3}
+                                stroke={defaultProperties?.stroke || '#000'}
+                                strokeWidth={defaultProperties?.strokeWidth || 3}
                                 fill="none"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -268,12 +282,4 @@ function CanvasContent() {
             </ReactFlow>
         </div>
     );
-}
-
-export default function Canvas() {
-    return (
-        <ReactFlowProvider>
-            <CanvasContent />
-        </ReactFlowProvider>
-    )
 }
