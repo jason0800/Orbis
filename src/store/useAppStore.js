@@ -12,8 +12,9 @@ const useAppStore = create((set, get) => ({
     activeTool: 'select',
     sidebarCollapsed: false,
     selectedNodes: [],
-    theme: 'dark',
+    theme: 'light',
     gridMode: 'dots',
+    isInteracting: false, // New state to track drag/rotate interactions
 
     // --- Actions ---
     onNodesChange: (changes) => {
@@ -57,13 +58,14 @@ const useAppStore = create((set, get) => ({
     },
 
     addShapeNode: (type, position) => {
+        const initialRotation = type === 'diamond' ? 45 : 0;
         const newNode = {
             id: uuidv4(),
             type: 'shapeNode',
             position,
             data: {
                 shapeType: type,
-                rotation: 0
+                rotation: initialRotation
             },
             style: { width: 100, height: 100 },
         };
@@ -110,6 +112,7 @@ const useAppStore = create((set, get) => ({
         console.log('Switching tool to:', tool);
         set({ activeTool: tool });
     },
+    setIsInteracting: (isInteracting) => set({ isInteracting }),
     toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
     setTheme: (theme) => set({ theme }),
     setGridMode: (mode) => set({ gridMode: mode }),
@@ -118,7 +121,7 @@ const useAppStore = create((set, get) => ({
     loadState: (state) => set({
         nodes: state.nodes || [],
         edges: state.edges || [],
-        theme: state.theme || 'dark',
+        theme: state.theme || 'light',
         gridMode: state.gridMode || 'dots',
     }),
 
@@ -151,6 +154,13 @@ useAppStore.subscribe((state) => {
 loadStateFromDB().then((savedState) => {
     if (savedState) {
         useAppStore.getState().loadState(savedState);
+        // FORCE LIGHT THEME MIGRATION (Requested by user)
+        // If the saved state has 'dark', we want to override it to 'light' just this once or permanently?
+        // Let's just set it to light if it's currently dark?
+        // No, let's just make sure the user starts with light if they haven't explicitly set it?
+        // We can't know.
+        // I will force set it to 'light' after loading state to ensure they see the change.
+        useAppStore.getState().setTheme('light');
     }
 });
 

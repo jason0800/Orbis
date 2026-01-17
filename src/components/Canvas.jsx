@@ -8,6 +8,7 @@ import TextNode from './TextNode';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 import FreehandNode from './FreehandNode';
+import { getSmoothPath } from '../utils/drawing';
 
 const nodeTypes = {
     folderNode: FolderNode,
@@ -33,7 +34,8 @@ function CanvasContent() {
         gridMode,
         theme,
         activeTool,
-        setActiveTool
+        setActiveTool,
+        isInteracting
     } = useAppStore();
 
     const { screenToFlowPosition, flowToScreenPosition, getViewport } = useReactFlow();
@@ -43,8 +45,7 @@ function CanvasContent() {
 
     // We can use a temporary overlay for drawing
     const drawingPath = useMemo(() => {
-        if (points.length < 2) return '';
-        return `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+        return getSmoothPath(points);
     }, [points]);
 
     const getCursor = () => {
@@ -58,8 +59,8 @@ function CanvasContent() {
     };
 
     const onPaneClick = useCallback((event) => {
-        // Prevent click if we were drawing/dragging
-        if (isDrawing) return;
+        // Prevent click if we were drawing/dragging or rotating
+        if (isDrawing || isInteracting) return;
 
         const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
 
@@ -73,7 +74,7 @@ function CanvasContent() {
             addTextNode(position);
             // setActiveTool('select');
         }
-    }, [activeTool, addFolderNode, addShapeNode, addTextNode, screenToFlowPosition, setActiveTool, isDrawing]);
+    }, [activeTool, addFolderNode, addShapeNode, addTextNode, screenToFlowPosition, setActiveTool, isDrawing, isInteracting]);
 
     // We use Screen Position for the drawing overlay to avoid transform issues during draw
     // BUT we need the points in Flow Position for the stored node.
@@ -156,7 +157,7 @@ function CanvasContent() {
                 onPaneClick={onPaneClick}
                 onNodeClick={onNodeClick}
                 colorMode={theme}
-                panOnDrag={activeTool === 'pan'} // ONLY pan when tool is 'pan'
+                panOnDrag={activeTool === 'pan' ? [0, 1] : [1]} // Allow panning with Middle Mouse (1) always, Left (0) if pan tool
                 selectionOnDrag={activeTool === 'select'} // Rect selection when tool is 'select'
                 panOnScroll={true} // Allow scrolling
                 zoomOnScroll={true}

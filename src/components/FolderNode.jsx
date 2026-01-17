@@ -61,16 +61,19 @@ const FolderNode = ({ data, selected, id }) => {
                             className="nodrag"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            // onBlur={handleBlur} // Removed blur auto-save to allow clicking into textarea without closing
                             autoFocus
+                            placeholder="Folder Name"
                             style={{
-                                background: 'var(--bg-secondary)',
-                                border: '1px solid var(--accent-color)',
-                                color: 'var(--text-primary)',
-                                padding: '2px 4px',
-                                borderRadius: '4px',
+                                background: 'transparent',
+                                border: 'none',
+                                borderBottom: '1px solid var(--accent-color)', // Subtle indicator of focus
+                                color: 'var(--node-text)',
+                                padding: '0',
                                 width: '100%',
-                                fontWeight: 'bold'
+                                fontWeight: 'bold',
+                                fontSize: 'inherit', // Inherit from parent
+                                fontFamily: 'inherit',
+                                outline: 'none'
                             }}
                         />
                     ) : (
@@ -103,39 +106,44 @@ const FolderNode = ({ data, selected, id }) => {
                         className="nodrag"
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Description..."
+                        placeholder="Add a description..."
                         style={{
-                            background: 'var(--bg-secondary)',
-                            border: '1px solid var(--accent-color)',
-                            color: 'var(--text-primary)',
-                            padding: '2px 4px',
-                            borderRadius: '4px',
+                            background: 'transparent',
+                            border: 'none',
+                            borderTop: '1px solid var(--node-border)', // Match the non-edit separator
+                            color: 'var(--node-text)',
+                            padding: '4px 0',
                             width: '100%',
-                            height: '100%', // Fill available space
+                            height: '100%',
                             flex: 1,
                             fontSize: '0.85em',
                             resize: 'none',
-                            fontFamily: 'inherit'
+                            fontFamily: 'inherit',
+                            outline: 'none',
+                            opacity: 0.8
                         }}
                     />
                     <button
-                        onClick={handleBlur} // Reusing handleBlur as save
+                        onClick={handleBlur}
                         className="nodrag"
                         style={{
                             alignSelf: 'flex-end',
-                            background: '#646cff',
+                            background: 'var(--accent-color)', // Use theme variable
                             color: 'white',
                             border: 'none',
                             borderRadius: '4px',
                             padding: '4px 8px',
                             cursor: 'pointer',
-                            fontSize: '0.8em',
+                            fontSize: '0.75em',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            gap: '4px',
+                            opacity: 0.9,
+                            fontWeight: 'bold',
+                            marginTop: '2px'
                         }}
                     >
-                        <Check size={12} /> Save
+                        <Check size={12} /> Done
                     </button>
                 </div>
             ) : (

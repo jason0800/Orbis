@@ -1,37 +1,60 @@
 import React, { memo } from 'react';
 import { NodeResizer } from '@xyflow/react';
+import { getSmoothPath } from '../utils/drawing';
+import { useNodeRotate } from '../hooks/useNodeRotate';
+import RotationHandle from './RotationHandle';
 
-const FreehandNode = ({ data, selected }) => {
-    const { points = [], color = 'var(--text-primary)', strokeWidth = 3 } = data;
+const FreehandNode = ({ data, selected, id }) => {
+    const { points = [], color = 'var(--text-primary)', strokeWidth = 3, width = 100, height = 100, rotation = 0 } = data;
+    const { rotateRef, centerRef, onRotateStart } = useNodeRotate(id, rotation);
 
     // Convert points array to SVG path
-    const pathData = points.length > 0
-        ? `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')
-        : '';
-
-    // Calculate bounding box for the SVG viewbox if needed, or just let it overflow with standard CSS
-    // For simplicity, we assume the node position is the top-left of the bounding box, 
-    // and points are relative to it, OR points are global and we need to normalize.
-    // Let's assume points are relative to the node's position (0,0).
+    const pathData = getSmoothPath(points);
 
     return (
-        <div style={{ width: '100%', height: '100%', minWidth: '50px', minHeight: '50px', position: 'relative' }}>
-            <NodeResizer
-                color="#646cff"
-                isVisible={selected}
-                minWidth={30}
-                minHeight={30}
-            />
-            <svg style={{ width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none' }}>
-                <path
-                    d={pathData}
-                    stroke={color}
-                    strokeWidth={strokeWidth}
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+        <div style={{ width: '100%', height: '100%', minWidth: '20px', minHeight: '20px', position: 'relative' }}>
+            {/* Rotated Container */}
+            <div
+                ref={centerRef}
+                style={{
+                    width: '100%',
+                    height: '100%',
+                    transform: `rotate(${rotation}deg)`,
+                    transformOrigin: 'center center',
+                    position: 'relative'
+                }}
+            >
+                <NodeResizer
+                    color="#646cff"
+                    isVisible={selected}
+                    minWidth={20}
+                    minHeight={20}
                 />
-            </svg>
+
+                {selected && (
+                    <RotationHandle rotateRef={rotateRef} onMouseDown={onRotateStart} />
+                )}
+
+                <svg
+                    viewBox={`0 0 ${width} ${height}`}
+                    preserveAspectRatio="none"
+                    style={{ width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none' }}
+                >
+                    <path
+                        d={pathData}
+                        stroke={color}
+                        strokeWidth={strokeWidth}
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        // Since we are using viewBox 0 0 w h, and points are normalized to 0..w, 0..h
+                        // Scaling happens automatically via SVG scaling.
+                        // However, stroke width might scale too? 
+                        // vector-effect="non-scaling-stroke" keeps stroke width constant!
+                        vectorEffect="non-scaling-stroke"
+                    />
+                </svg>
+            </div>
         </div>
     );
 };

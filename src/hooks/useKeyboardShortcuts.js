@@ -12,15 +12,16 @@ export const useKeyboardShortcuts = () => {
 
             // Tools
             switch (e.key.toLowerCase()) {
-                case '1': setActiveTool('pan'); break;
-                case '2': setActiveTool('select'); break;
+                case '1': setActiveTool('select'); break;
+                case '2': setActiveTool('pan'); break;
                 case '3': setActiveTool('node'); break;
-                case 't': setActiveTool('text'); break;
-                case 'r': setActiveTool('rectangle'); break;
-                case 'c': setActiveTool('circle'); break;
-                case 'd': setActiveTool('diamond'); break;
-                case 'a': setActiveTool('arrow'); break;
-                case 'l': setActiveTool('line'); break;
+                case '4': setActiveTool('text'); break;
+                case '5': setActiveTool('rectangle'); break;
+                case '6': setActiveTool('circle'); break;
+                case '7': setActiveTool('diamond'); break;
+                case '8': setActiveTool('arrow'); break;
+                case '9': setActiveTool('line'); break;
+                case '0': setActiveTool('freehand'); break;
                 case 'e': setActiveTool('eraser'); break;
                 default: break;
             }

@@ -50,13 +50,15 @@ const TextNode = ({ data, selected, id }) => {
                     style={{
                         width: '100%',
                         height: '100%',
-                        background: 'transparent',
-                        color: 'var(--text-primary)',
+                        background: 'transparent', // Ensure transparent
+                        color: 'var(--node-text)', // Use consistent text color var
                         border: 'none',
                         outline: 'none',
-                        resize: 'none', // Disable native resize
+                        resize: 'none',
                         fontFamily: 'inherit',
-                        fontSize: 'inherit'
+                        fontSize: 'inherit',
+                        overflow: 'hidden', // Hide scrollbars
+                        lineHeight: '1.5'
                     }}
                 />
             ) : (
