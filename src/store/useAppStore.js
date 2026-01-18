@@ -177,7 +177,7 @@ const useAppStore = create((set, get) => ({
                 rotation: initialRotation,
                 ...defaultProperties // Apply defaults
             },
-            style: { width: 100, height: 100 },
+            style: { width: 100, height: 100, pointerEvents: 'none' },
         };
         set((state) => ({ nodes: [...state.nodes, newNode] }));
     },
@@ -196,7 +196,7 @@ const useAppStore = create((set, get) => ({
                 height: size.height,
                 ...defaultProperties // Apply defaults (color, width, etc.)
             },
-            style: { width: size.width, height: size.height },
+            style: { width: size.width, height: size.height, pointerEvents: 'none' },
         };
         set((state) => ({ nodes: [...state.nodes, newNode] }));
     },
@@ -223,8 +223,8 @@ const useAppStore = create((set, get) => ({
         const newNode = {
             id: uuidv4(),
             type: 'textNode',
-            position: { x: position.x - 100, y: position.y - 25 }, // Centered (200x50 default)
-            style: { width: 200, height: 50 }, // Fix: Set initial dimensions
+            position: { x: position.x - 50, y: position.y - 15 }, // Centered (approx 100x30 default)
+            style: { width: 100, height: 30 }, // Fix: Set initial dimensions
             data: {
                 text: 'Text',
                 stroke: defaultProperties.stroke, // Apply color
@@ -266,7 +266,16 @@ const useAppStore = create((set, get) => ({
 
     setActiveTool: (tool) => {
         console.log('Switching tool to:', tool);
+        get().unselectAll();
         set({ activeTool: tool });
+    },
+
+    unselectAll: () => {
+        set((state) => ({
+            nodes: state.nodes.map(n => ({ ...n, selected: false })),
+            edges: state.edges.map(e => ({ ...e, selected: false })),
+            selectedNodes: []
+        }));
     },
     setIsInteracting: (isInteracting) => set({ isInteracting }),
     toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),

@@ -136,6 +136,11 @@ button:focus-visible {
     cursor: crosshair !important;
 }
 
+/* Select Tool: Force Default (Arrow) cursor on pane */
+.tool-select .react-flow__pane {
+    cursor: default !important;
+}
+
 /* Select Tool: Force Move cursor when hovering over nodes */
 .tool-select .react-flow__node:hover {
     cursor: move !important;

@@ -1,7 +1,7 @@
 import React from 'react';
 import useAppStore from '../store/useAppStore';
 import {
-    MousePointer2,
+    MousePointer,
     Hand,
     FolderPlus,
     Type,
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 const tools = [
-    { id: 'select', icon: MousePointer2, label: 'Select (1)', shortcut: '1' },
+    { id: 'select', icon: MousePointer, label: 'Select (1)', shortcut: '1' },
     { id: 'pan', icon: Hand, label: 'Pan (2)', shortcut: '2' },
     { id: 'node', icon: FolderPlus, label: 'Add Folder (3)', shortcut: '3' },
     { divider: true },

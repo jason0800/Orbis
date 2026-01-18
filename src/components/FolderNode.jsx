@@ -1,15 +1,104 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
-import { Handle, Position, NodeResizer } from '@xyflow/react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Folder, Pencil, Check } from 'lucide-react';
 import useAppStore from '../store/useAppStore';
+
+const CustomHandle = ({ cursor, onPointerDown, style }) => (
+    <div
+        onPointerDown={onPointerDown}
+        className="nodrag"
+        style={{
+            position: 'absolute',
+            width: '8px',
+            height: '8px',
+            background: '#b4e6a0',
+            borderRadius: '0',
+            cursor: cursor,
+            zIndex: 10,
+            border: '1px solid #3a6b24',
+            boxSizing: 'border-box',
+            touchAction: 'none',
+            pointerEvents: 'auto',
+            ...style
+        }}
+    />
+);
 
 const FolderNode = ({ data, selected, id }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(data.name);
     const [description, setDescription] = useState(data.description || '');
     const [hasError, setHasError] = useState(false);
-    const { updateNodeData } = useAppStore();
+    const updateNodeData = useAppStore((state) => state.updateNodeData);
+    const updateNode = useAppStore((state) => state.updateNode);
     const wrapperRef = useRef(null);
+    const { screenToFlowPosition, getNode } = useReactFlow();
+
+    // --- Resize Logic ---
+    const onResizeStart = (e, dir) => {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const node = getNode(id);
+        if (!node) return;
+
+        const startMouse = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+        const startX = node.position.x;
+        const startY = node.position.y;
+
+        let w = parseFloat(node.style?.width) || 150;
+        let h = parseFloat(node.style?.height) || 80;
+
+        // No rotation for Folders usually, but logic supports it if 0
+        const rotDeg = data.rotation || 0;
+        const rotRad = (rotDeg * Math.PI) / 180;
+        const cos = Math.cos(-rotRad);
+        const sin = Math.sin(-rotRad);
+
+        const onPointerMove = (moveEvent) => {
+            moveEvent.stopPropagation();
+            moveEvent.preventDefault();
+
+            const currentMouse = screenToFlowPosition({ x: moveEvent.clientX, y: moveEvent.clientY });
+            const globalDx = currentMouse.x - startMouse.x;
+            const globalDy = currentMouse.y - startMouse.y;
+
+            const localDx = globalDx * cos - globalDy * sin;
+            const localDy = globalDx * sin + globalDy * cos;
+
+            let newL = 0, newT = 0, newR = w, newB = h;
+
+            if (dir.includes('n')) newT += localDy;
+            if (dir.includes('s')) newB += localDy;
+            if (dir.includes('w')) newL += localDx;
+            if (dir.includes('e')) newR += localDx;
+
+            const finalL = Math.min(newL, newR);
+            const finalR = Math.max(newL, newR);
+            const finalT = Math.min(newT, newB);
+            const finalB = Math.max(newT, newB);
+
+            // Min dimensions for Folder
+            const finalW = Math.max(150, finalR - finalL);
+            const finalH = Math.max(50, finalB - finalT); // Allow smaller height if needed? Standard was minHeight 80. keeping 50 for flexibility or 80.
+
+            const finalX = startX + finalL;
+            const finalY = startY + finalT;
+
+            updateNode(id, {
+                position: { x: finalX, y: finalY },
+                style: { ...node.style, width: finalW, height: finalH }
+            });
+        };
+
+        const onPointerUp = () => {
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+        };
+
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+    };
 
     const handleDoubleClick = () => {
         setIsEditing(true);
@@ -41,7 +130,7 @@ const FolderNode = ({ data, selected, id }) => {
                 padding: '10px',
                 borderRadius: '8px',
                 background: 'var(--node-bg)',
-                border: selected ? '2px solid var(--accent-color)' : '1px solid var(--node-border)',
+                border: '1px solid var(--node-border)',
                 minWidth: '150px',
                 color: 'var(--node-text)',
                 boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
@@ -51,18 +140,23 @@ const FolderNode = ({ data, selected, id }) => {
                 overflow: 'hidden' // Ensure nothing spills out
             }}
         >
-            <NodeResizer
-                color="#646cff"
-                isVisible={selected}
-                minWidth={150}
-                minHeight={80}
-            />
+            {selected && (
+                <div style={{ position: 'absolute', top: -6, left: -6, right: -6, bottom: -6, border: '1px solid #b4e6a0', borderRadius: '8px', pointerEvents: 'none', zIndex: 5 }} />
+            )}
+            {selected && (
+                <>
+                    <CustomHandle cursor="nw-resize" style={{ top: -10, left: -10 }} onPointerDown={(e) => onResizeStart(e, 'nw')} />
+                    <CustomHandle cursor="ne-resize" style={{ top: -10, right: -10 }} onPointerDown={(e) => onResizeStart(e, 'ne')} />
+                    <CustomHandle cursor="sw-resize" style={{ bottom: -10, left: -10 }} onPointerDown={(e) => onResizeStart(e, 'sw')} />
+                    <CustomHandle cursor="se-resize" style={{ bottom: -10, right: -10 }} onPointerDown={(e) => onResizeStart(e, 'se')} />
+                </>
+            )}
 
             <Handle type="target" position={Position.Top} style={{ background: '#555' }} />
 
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: (isEditing || data.description) ? '4px' : '0', justifyContent: 'space-between', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                    <Folder size={20} color="#b4e6a0" style={{ marginRight: '8px', flexShrink: 0 }} />
+                    <Folder size={20} color="#6cb056" style={{ marginRight: '8px', flexShrink: 0 }} />
                     {isEditing ? (
                         <input
                             className="nodrag"

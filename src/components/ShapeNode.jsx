@@ -10,15 +10,16 @@ const CustomHandle = ({ cursor, onPointerDown, style }) => (
         className="nodrag"
         style={{
             position: 'absolute',
-            width: '12px',
-            height: '12px',
-            background: '#646cff',
-            borderRadius: '50%',
+            width: '8px',
+            height: '8px',
+            background: '#b4e6a0',
+            borderRadius: '0',
             cursor: cursor,
             zIndex: 10,
-            border: '2px solid white',
+            border: '1px solid #3a6b24',
             boxSizing: 'border-box',
             touchAction: 'none',
+            pointerEvents: 'auto',
             ...style
         }}
     />
@@ -41,7 +42,7 @@ const ShapeNode = ({ data, selected, id }) => {
 
     const getStrokeDasharray = (style) => {
         switch (style) {
-            case 'dashed': return '10, 5';
+            case 'dashed': return '10, 10';
             case 'dotted': return '1, 8'; // Sparse dots with round caps
             default: return 'none';
         }
@@ -50,12 +51,13 @@ const ShapeNode = ({ data, selected, id }) => {
     const commonProps = {
         stroke: (!stroke || stroke === '#fff') ? 'var(--shape-stroke)' : stroke,
         strokeWidth: strokeWidth,
-        fill: fill,
-        fillOpacity: fill === 'transparent' ? 0 : 1,
+        fill: fill === 'transparent' ? 'none' : fill,
+        fillOpacity: 1,
         strokeDasharray: getStrokeDasharray(strokeStyle),
         strokeLinecap: 'round', // Essential for 'dotted' to look like dots (with length 1)
         opacity: opacity,
         vectorEffect: "non-scaling-stroke",
+        pointerEvents: 'auto',
     };
 
     const isLine = ['line', 'arrow'].includes(shapeType);
@@ -185,7 +187,7 @@ const ShapeNode = ({ data, selected, id }) => {
     };
 
     return (
-        <div style={{ width: '100%', height: '100%', minWidth: '1px', minHeight: '1px', position: 'relative' }}>
+        <div style={{ width: '100%', height: '100%', minWidth: '1px', minHeight: '1px', position: 'relative', pointerEvents: 'none' }}>
             <div style={{
                 width: '100%', height: '100%',
                 transform: `rotate(${rotation}deg)`,
@@ -196,10 +198,11 @@ const ShapeNode = ({ data, selected, id }) => {
                 {/* --- Handles for 2D Shapes --- */}
                 {!isLine && selected && (
                     <>
-                        <CustomHandle cursor="nw-resize" style={{ top: -6, left: -6 }} onPointerDown={(e) => onResizeStart(e, 'nw')} />
-                        <CustomHandle cursor="ne-resize" style={{ top: -6, right: -6 }} onPointerDown={(e) => onResizeStart(e, 'ne')} />
-                        <CustomHandle cursor="sw-resize" style={{ bottom: -6, left: -6 }} onPointerDown={(e) => onResizeStart(e, 'sw')} />
-                        <CustomHandle cursor="se-resize" style={{ bottom: -6, right: -6 }} onPointerDown={(e) => onResizeStart(e, 'se')} />
+                        <div style={{ position: 'absolute', top: -6, left: -6, right: -6, bottom: -6, border: '1px solid #b4e6a0', pointerEvents: 'none' }} />
+                        <CustomHandle cursor="nw-resize" style={{ top: -10, left: -10 }} onPointerDown={(e) => onResizeStart(e, 'nw')} />
+                        <CustomHandle cursor="ne-resize" style={{ top: -10, right: -10 }} onPointerDown={(e) => onResizeStart(e, 'ne')} />
+                        <CustomHandle cursor="sw-resize" style={{ bottom: -10, left: -10 }} onPointerDown={(e) => onResizeStart(e, 'sw')} />
+                        <CustomHandle cursor="se-resize" style={{ bottom: -10, right: -10 }} onPointerDown={(e) => onResizeStart(e, 'se')} />
                         <RotationHandle rotateRef={rotateRef} onMouseDown={onRotateStart} />
                     </>
                 )}
@@ -207,8 +210,8 @@ const ShapeNode = ({ data, selected, id }) => {
                 {/* --- Handles for Line/Arrow --- */}
                 {isLine && selected && (
                     <>
-                        <CustomHandle cursor="crosshair" style={{ top: '50%', left: 0, transform: 'translate(-50%, -50%)' }} onPointerDown={(e) => onLineDragStart(e, 'left')} />
-                        <CustomHandle cursor="crosshair" style={{ top: '50%', right: 0, transform: 'translate(50%, -50%)' }} onPointerDown={(e) => onLineDragStart(e, 'right')} />
+                        <CustomHandle cursor="crosshair" style={{ width: '8px', height: '8px', top: '50%', left: 0, transform: 'translate(-50%, -50%)' }} onPointerDown={(e) => onLineDragStart(e, 'left')} />
+                        <CustomHandle cursor="crosshair" style={{ width: '8px', height: '8px', top: '50%', right: 0, transform: 'translate(50%, -50%)' }} onPointerDown={(e) => onLineDragStart(e, 'right')} />
                     </>
                 )}
 
@@ -219,13 +222,27 @@ const ShapeNode = ({ data, selected, id }) => {
                         viewBox={!isLine ? "0 0 100 100" : undefined}
                         width="100%" height="100%"
                         preserveAspectRatio="none"
-                        style={{ overflow: 'visible' }}
+                        style={{ overflow: 'visible', pointerEvents: 'none' }}
                     >
                         <defs>
                             <marker id={`arrowhead-${id}`} markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
                                 <polygon points="0 0, 6 2, 0 4" fill={commonProps.stroke} />
                             </marker>
                         </defs>
+
+                        {/* Hit Area Clones (Invariant to visual stroke style) */}
+                        {(shapeType === 'rectangle' || shapeType === 'diamond') && (
+                            <rect x="0" y="0" width="100" height="100" rx={5} {...commonProps} stroke="transparent" strokeWidth={12} fill="none" pointerEvents="auto" />
+                        )}
+                        {shapeType === 'circle' && (
+                            <ellipse cx="50" cy="50" rx="50" ry="50" {...commonProps} stroke="transparent" strokeWidth={12} fill="none" pointerEvents="auto" />
+                        )}
+                        {shapeType === 'line' && (
+                            <line x1="0" y1="50%" x2="100%" y2="50%" {...commonProps} stroke="transparent" strokeWidth={12} fill="none" pointerEvents="auto" />
+                        )}
+                        {shapeType === 'arrow' && (
+                            <line x1="0" y1="50%" x2="100%" y2="50%" {...commonProps} stroke="transparent" strokeWidth={12} fill="none" pointerEvents="auto" />
+                        )}
 
                         {(shapeType === 'rectangle' || shapeType === 'diamond') && (
                             <rect x="0" y="0" width="100" height="100" rx={5} {...commonProps} />

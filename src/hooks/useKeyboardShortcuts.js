@@ -15,7 +15,8 @@ export const useKeyboardShortcuts = () => {
                 copySelectedNodes,
                 pasteNodes,
                 undo,
-                redo
+                redo,
+                unselectAll
             } = useAppStore.getState();
 
             // Tools (Reordered 1-9, no Diamond)
@@ -31,6 +32,7 @@ export const useKeyboardShortcuts = () => {
                 case '9': setActiveTool('freehand'); break; // Was Line
                 // case '0': break; // Freehand was 0
                 case 'e': setActiveTool('eraser'); break;
+                case 'escape': unselectAll(); break;
                 default: break;
             }
 

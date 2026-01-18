@@ -127,7 +127,7 @@ export default function Canvas() {
             if (newNode) {
                 // Initialize small
                 useAppStore.getState().updateNode(newNode.id, {
-                    style: { width: 1, height: 1 },
+                    style: { width: 1, height: 1, pointerEvents: 'none' },
                     data: { ...newNode.data, rotation: 0 }
                 });
 
@@ -165,11 +165,14 @@ export default function Canvas() {
                 const cy = (startPos.y + pos.y) / 2;
 
                 const h = 20; // Fixed visual height container for line
-                useAppStore.getState().updateNode(nodeId, {
-                    position: { x: cx - dist / 2, y: cy - h / 2 },
-                    style: { width: Math.max(1, dist), height: h },
-                    data: { rotation: angle, shapeType: type }
-                });
+                const currentNode = useAppStore.getState().nodes.find(n => n.id === nodeId);
+                if (currentNode) {
+                    useAppStore.getState().updateNode(nodeId, {
+                        position: { x: cx - dist / 2, y: cy - h / 2 },
+                        style: { width: Math.max(1, dist), height: h, pointerEvents: 'none' },
+                        data: { ...currentNode.data, rotation: angle }
+                    });
+                }
 
             } else {
                 // Rect/Circle Logic: Bounds
@@ -181,7 +184,7 @@ export default function Canvas() {
 
                 useAppStore.getState().updateNode(nodeId, {
                     position: { x: minX, y: minY },
-                    style: { width: Math.max(1, width), height: Math.max(1, height) }
+                    style: { width: Math.max(1, width), height: Math.max(1, height), pointerEvents: 'none' }
                 });
             }
         }

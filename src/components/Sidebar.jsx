@@ -100,12 +100,11 @@ const Sidebar = () => {
     const currentData = selectedNode ? selectedNode.data : defaultProperties;
 
     const updateProp = (key, value) => {
+        // Sticky: properties applied to selection also become new defaults
+        setDefaultProperties({ [key]: value });
+
         if (selectedNode) {
-            updateNode(selectedNode.id, {
-                data: { ...selectedNode.data, [key]: value }
-            });
-        } else {
-            setDefaultProperties({ [key]: value });
+            useAppStore.getState().updateNodeData(selectedNode.id, { [key]: value });
         }
     };
 
@@ -271,8 +270,8 @@ const Sidebar = () => {
                     !isText && (
                         <div style={controlGroupStyle}>
                             <label style={labelStyle}>Stroke Width</label>
-                            <div style={{ display: 'flex', gap: '6px', marginTop: '4px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '6px' }}>
-                                {[1, 2, 3].map(w => (
+                            <div style={{ display: 'flex', gap: '4px', marginTop: '4px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '6px' }}>
+                                {[2, 3, 4].map(w => (
                                     <button
                                         key={w}
                                         onClick={() => updateProp('strokeWidth', w)}
@@ -280,6 +279,8 @@ const Sidebar = () => {
                                         style={{
                                             flex: 1,
                                             height: '28px',
+                                            minWidth: 0,
+                                            padding: 0,
                                             background: (strokeWidth === w) ? 'rgba(180, 230, 160, 0.3)' : 'rgba(0,0,0,0.05)', // Accent vs Grey
                                             border: (strokeWidth === w) ? '1px solid #b4e6a0' : '1px solid transparent',
                                             color: (strokeWidth === w) ? '#3a6b24' : 'var(--text-primary)',
@@ -292,9 +293,9 @@ const Sidebar = () => {
                                         }}
                                     >
                                         <div style={{
-                                            height: Math.min(6, Math.max(2, w / 1.5)),
-                                            width: '60%',
-                                            background: 'var(--text-primary)',
+                                            height: `${w}px`,
+                                            width: '24px',
+                                            background: (strokeWidth === w) ? '#3a6b24' : 'var(--text-primary)',
                                             borderRadius: '2px'
                                         }}></div>
                                     </button>
@@ -306,10 +307,10 @@ const Sidebar = () => {
 
                 {/* Style (Solid/Dashed/Dotted) */}
                 {
-                    !isText && (
+                    !isText && !isFreehand && (
                         <div style={controlGroupStyle}>
                             <label style={labelStyle}>Stroke Style</label>
-                            <div style={{ display: 'flex', gap: '6px', marginTop: '4px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '6px' }}>
+                            <div style={{ display: 'flex', gap: '4px', marginTop: '4px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '6px' }}>
                                 {['solid', 'dashed', 'dotted'].map(s => (
                                     <button
                                         key={s}
@@ -318,6 +319,8 @@ const Sidebar = () => {
                                         style={{
                                             flex: 1,
                                             height: '28px',
+                                            minWidth: 0,
+                                            padding: 0,
                                             background: (strokeStyle === s) ? 'rgba(180, 230, 160, 0.3)' : 'rgba(0,0,0,0.05)', // Accent vs Grey
                                             border: (strokeStyle === s) ? '1px solid #b4e6a0' : '1px solid transparent',
                                             borderRadius: '4px',
@@ -328,14 +331,14 @@ const Sidebar = () => {
                                             justifyContent: 'center'
                                         }}
                                     >
-                                        <svg width="100%" height="4" style={{ overflow: 'visible' }}>
+                                        <svg width="24px" height="4" style={{ overflow: 'hidden' }}>
                                             <line
                                                 x1="0" y1="2" x2="100%" y2="2"
                                                 stroke={strokeStyle === s ? '#3a6b24' : 'var(--text-primary)'}
                                                 strokeWidth="2"
                                                 strokeDasharray={
                                                     s === 'solid' ? 'none' :
-                                                        s === 'dashed' ? '4,3' :
+                                                        s === 'dashed' ? '4,4' :
                                                             '1,3' // Dotted: small dot, gap
                                                 }
                                                 strokeLinecap={s === 'dotted' ? 'round' : 'butt'}
