@@ -7,11 +7,11 @@ Orbis is a powerful, interactive folder structure planner and diagramming tool b
 - **Infinite Canvas**: Interactive whiteboard powered by React Flow.
 - **Node Types**:
   - **Folder Nodes**: Represent file directories with editable names and descriptions.
-  - **Shape Nodes**: Draw rectangles, circles, diamonds, arrows, and lines.
+  - **Shape Nodes**: Draw rectangles, circles, arrows, and lines.
   - **Text Nodes**: Add annotations and labels.
   - **Freehand Drawing**: Sketch ideas freely using the pencil tool.
 - **Customization**:
-  - **Theme Support**: Seamless Dark and Light mode switching.
+  - **Theme Support**: Seamless Dark and Light mode switching with a polished **Nature Green** aesthetic.
   - **Grid Control**: Toggle between Dots, Lines, or Cross grid patterns.
 - **Tools**:
   - **Selection & Panning**: Drag to select or pan the view.
@@ -47,16 +47,21 @@ Orbis is a powerful, interactive folder structure planner and diagramming tool b
 
 ## Controls
 
-- **1**: Pan Tool
-- **2**: Select Tool
+- **1**: Select Tool
+- **2**: Pan Tool
 - **3**: Add Folder Node
-- **Rectangle (R) / Circle (C) / Diamond (D)**: Add Shapes
-- **Arrow (A) / Line (L)**: Connectors
-- **F**: Freehand/Pencil
-- **T**: Text
-- **E**: Eraser
-- **Delete / Backspace**: Remove selected items
+- **4**: Text Tool
+- **5**: Rectangle Tool
+- **6**: Circle Tool
+- **7**: Arrow Tool
+- **8**: Line Tool
+- **9**: Freehand / Pencil Tool
+- **E**: Eraser Tool
+- **Delete / Backspace**: Delete selected items
+- **Ctrl + C / V**: Copy / Paste
+- **Ctrl + Z / Y**: Undo / Redo
+- **Escape**: Unselect All
 
 ## License
 
-MIT
+Distributed under the MIT License. See `LICENSE` for more information.

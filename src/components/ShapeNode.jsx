@@ -49,7 +49,7 @@ const ShapeNode = ({ data, selected, id }) => {
     };
 
     const commonProps = {
-        stroke: (!stroke || stroke === '#fff') ? 'var(--shape-stroke)' : stroke,
+        stroke: (!stroke || stroke === '#fff' || stroke === '#000' || stroke === '#000000') ? 'var(--shape-stroke)' : stroke,
         strokeWidth: strokeWidth,
         fill: fill === 'transparent' ? 'none' : fill,
         fillOpacity: 1,

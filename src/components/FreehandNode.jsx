@@ -117,7 +117,7 @@ const FreehandNode = ({ id, data, selected }) => {
     };
 
     const styleProps = {
-        stroke: stroke,
+        stroke: (stroke === '#000' || stroke === '#000000') ? 'var(--shape-stroke)' : stroke,
         strokeWidth: strokeWidth,
         strokeDasharray: getStrokeDasharray(strokeStyle),
         opacity: opacity,

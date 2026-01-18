@@ -160,7 +160,7 @@ const Sidebar = () => {
                                     width: '20px', height: '20px',
                                     borderRadius: '3px',
                                     background: c,
-                                    border: stroke === c ? '2px solid var(--accent-color)' : '1px solid rgba(0,0,0,0.2)',
+                                    border: stroke === c ? '2px solid #000000' : '1px solid rgba(0,0,0,0.2)',
                                     cursor: 'pointer',
                                     padding: 0
                                 }}
@@ -211,7 +211,7 @@ const Sidebar = () => {
                                     borderRadius: '3px',
                                     background: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'><path d='M0 0h4v4H0zm4 4h4v4H4z' fill='%23e0e0e0'/></svg>")`,
                                     backgroundColor: '#fff',
-                                    border: fill === 'transparent' ? '2px solid var(--accent-color)' : '1px solid rgba(0,0,0,0.2)',
+                                    border: fill === 'transparent' ? '2px solid #000000' : '1px solid rgba(0,0,0,0.2)',
                                     cursor: 'pointer',
                                     padding: 0
                                 }}
@@ -226,7 +226,7 @@ const Sidebar = () => {
                                         width: '20px', height: '20px',
                                         borderRadius: '3px',
                                         background: c,
-                                        border: fill === c ? '2px solid var(--accent-color)' : '1px solid rgba(0,0,0,0.2)',
+                                        border: fill === c ? '2px solid #000000' : '1px solid rgba(0,0,0,0.2)',
                                         cursor: 'pointer',
                                         padding: 0
                                     }}
@@ -582,7 +582,7 @@ const listButtonStyle = {
     background: 'var(--bg-secondary)',
     transition: 'background 0.2s',
     ':hover': {
-        background: 'rgba(0,0,0,0.05)'
+        background: 'var(--border-color)'
     }
 };
 
@@ -622,7 +622,7 @@ const drawOrderBtnStyle = {
     height: '28px',
     padding: '0', // Override global padding
     minWidth: '0', // Allow shrink
-    background: 'rgba(0,0,0,0.05)', // Grey background
+    background: 'var(--bg-secondary)', // Adaptive background
     border: '1px solid transparent', // Default border
     color: 'var(--text-primary)',
     borderRadius: '4px',

@@ -23,6 +23,8 @@ const ERASER_CURSOR_BLACK = `url('data:image/svg+xml;utf8,<svg xmlns="http://www
 const ERASER_CURSOR_RED = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" /><path d="M22 21H7" /><path d="m5 11 9 9" /></svg>') 0 24, auto`;
 const FOLDER_CURSOR = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>') 12 12, auto`;
 
+const proOptions = { hideAttribution: true };
+
 export default function Canvas() {
     useKeyboardShortcuts();
 
@@ -273,6 +275,7 @@ export default function Canvas() {
                 minZoom={0.1}
                 panOnDrag={activeTool === 'pan' ? [0, 1, 2] : [1, 2]}
                 elevateNodesOnSelect={false}
+                proOptions={proOptions}
             >
                 {/* Render Background only if not 'none' */}
                 {gridMode !== 'none' && <Background variant={gridMode} gap={16} />}

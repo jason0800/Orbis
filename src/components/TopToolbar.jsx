@@ -64,7 +64,7 @@ const TopToolbar = () => {
                         title={`${tool.label}`}
                         style={{
                             background: isActive ? 'rgba(180, 230, 160, 0.3)' : 'transparent',
-                            color: isActive ? '#3a6b24' : 'var(--text-secondary)',
+                            color: isActive ? '#6cb056' : 'var(--text-secondary)',
                             border: isActive ? '1px solid #b4e6a0' : '1px solid transparent',
                             padding: '8px',
                             display: 'flex',
