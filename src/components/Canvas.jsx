@@ -102,6 +102,12 @@ export default function Canvas() {
         }
     }, [activeTool]);
 
+    const [selectionCount, setSelectionCount] = useState(0);
+
+    const onSelectionChange = useCallback(({ nodes }) => {
+        setSelectionCount(nodes.length);
+    }, []);
+
     // --- Interaction Handlers ---
 
     const onMouseDown = (e) => {
@@ -247,11 +253,13 @@ export default function Canvas() {
             onMouseUp={onMouseUp}
         >
             <ReactFlow
+                className={`selection-mode-${selectionCount > 1 ? 'multi' : 'single'}`}
                 nodes={nodes}
                 edges={edges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
+                onSelectionChange={onSelectionChange}
                 nodeTypes={nodeTypes}
                 fitView
                 onPaneClick={onPaneClick}

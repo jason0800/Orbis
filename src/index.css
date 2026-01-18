@@ -157,3 +157,9 @@ button:focus-visible {
     background-color: rgba(108, 176, 86, 0.1);
     border: 1px solid #6cb056;
 }
+
+/* Hide multi-selection rect if only one node is selected (avoid double border) */
+/* Hide multi-selection rect if only one node is selected (avoid double border) */
+.react-flow.selection-mode-single .react-flow__nodesselection-rect {
+    display: none !important;
+}
