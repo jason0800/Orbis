@@ -17,7 +17,6 @@ const tools = [
     { id: 'select', icon: MousePointer, label: 'Select (1)', shortcut: '1' },
     { id: 'pan', icon: Hand, label: 'Pan (2)', shortcut: '2' },
     { id: 'node', icon: FolderPlus, label: 'Add Folder (3)', shortcut: '3' },
-    { divider: true },
     { id: 'text', icon: Type, label: 'Text (4)', shortcut: '4' },
     { id: 'rectangle', icon: Square, label: 'Rectangle (5)', shortcut: '5' },
     { id: 'circle', icon: Circle, label: 'Circle (6)', shortcut: '6' },

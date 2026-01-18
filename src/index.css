@@ -145,3 +145,15 @@ button:focus-visible {
 .tool-select .react-flow__node:hover {
     cursor: move !important;
 }
+
+/* Selection Box (Rubber Band) */
+.react-flow__selection {
+    background-color: rgba(108, 176, 86, 0.1);
+    border: 1px solid #6cb056;
+}
+
+/* Multi-selection Bounding Box */
+.react-flow__nodesselection-rect {
+    background-color: rgba(108, 176, 86, 0.1);
+    border: 1px solid #6cb056;
+}

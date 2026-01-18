@@ -12,7 +12,7 @@ const CustomHandle = ({ cursor, onPointerDown, style }) => (
             position: 'absolute',
             width: '8px',
             height: '8px',
-            background: '#b4e6a0',
+            background: '#6cb056',
             borderRadius: '0',
             cursor: cursor,
             zIndex: 10,
@@ -198,7 +198,7 @@ const ShapeNode = ({ data, selected, id }) => {
                 {/* --- Handles for 2D Shapes --- */}
                 {!isLine && selected && (
                     <>
-                        <div style={{ position: 'absolute', top: -6, left: -6, right: -6, bottom: -6, border: '1px solid #b4e6a0', pointerEvents: 'none' }} />
+                        <div style={{ position: 'absolute', top: -6, left: -6, right: -6, bottom: -6, border: '1px solid #6cb056', pointerEvents: 'none' }} />
                         <CustomHandle cursor="nw-resize" style={{ top: -10, left: -10 }} onPointerDown={(e) => onResizeStart(e, 'nw')} />
                         <CustomHandle cursor="ne-resize" style={{ top: -10, right: -10 }} onPointerDown={(e) => onResizeStart(e, 'ne')} />
                         <CustomHandle cursor="sw-resize" style={{ bottom: -10, left: -10 }} onPointerDown={(e) => onResizeStart(e, 'sw')} />

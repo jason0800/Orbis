@@ -12,7 +12,7 @@ const CustomHandle = ({ cursor, onPointerDown, style }) => (
             position: 'absolute',
             width: '8px',
             height: '8px',
-            background: '#b4e6a0',
+            background: '#6cb056',
             borderRadius: '0',
             cursor: cursor,
             zIndex: 10,
@@ -189,7 +189,7 @@ const TextNode = ({ data, selected, id }) => {
                 onDoubleClick={handleDoubleClick}
             >
                 {selected && (
-                    <div style={{ position: 'absolute', top: -6, left: -6, right: -6, bottom: -6, border: '1px solid #b4e6a0', pointerEvents: 'none' }} />
+                    <div style={{ position: 'absolute', top: -6, left: -6, right: -6, bottom: -6, border: '1px solid #6cb056', pointerEvents: 'none' }} />
                 )}
                 {selected && (
                     <>
